@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<VendorMappings>
+    <!-- Workstations -->
+    <Vendor name="Dell" type="Workstation" />
+    <Vendor name="Hewlett" type="Workstation" />
+    <Vendor name="HP" type="Workstation" />
+    <Vendor name="Intel" type="Workstation" />
+    <Vendor name="Lenovo" type="Workstation" />
+    <Vendor name="Acer" type="Workstation" />
+    <Vendor name="ASUS" type="Workstation" />
+    <Vendor name="MSI" type="Workstation" />
+    <Vendor name="Toshiba" type="Workstation" />
+    <Vendor name="Panasonic" type="Workstation" />
+    <Vendor name="Fujitsu" type="Workstation" />
+    <!-- Control Systems -->
+    <Vendor name="Crestron" type="Control System" />
+    <Vendor name="Extron" type="Control System" />
+    <Vendor name="AMX" type="Control System" />
+    <Vendor name="Control4" type="Control System" />
+    <!-- Audio Devices -->
+    <Vendor name="Audinate" type="Audio Device" />
+    <Vendor name="Focusrite" type="Audio Device" />
+    <Vendor name="Behringer" type="Audio Device" />
+    <Vendor name="PreSonus" type="Audio Device" />
+    <Vendor name="Yamaha" type="Audio Device" />
+    <Vendor name="Tascam" type="Audio Device" />
+    <Vendor name="MOTU" type="Audio Device" />
+    <Vendor name="Roland" type="Audio Device" />
+    <!-- DSPs -->
+    <Vendor name="Biamp" type="DSP" />
+    <Vendor name="QSC" type="DSP" />
+    <Vendor name="Symetrix" type="DSP" />
+    <Vendor name="Bose" type="DSP" />
+    <Vendor name="ClearOne" type="DSP" />
+    <!-- Network Devices -->
+    <Vendor name="Cisco" type="Network Device" />
+    <Vendor name="Netgear" type="Network Device" />
+    <Vendor name="Belkin" type="Network Device" />
+    <Vendor name="TP-Link" type="Network Device" />
+    <Vendor name="D-Link" type="Network Device" />
+    <Vendor name="Ubiquiti" type="Network Device" />
+    <Vendor name="Juniper" type="Network Device" />
+    <Vendor name="Aruba" type="Network Device" />
+    <Vendor name="Huawei" type="Network Device" />
+    <Vendor name="Mikrotik" type="Network Device" />
+    <Vendor name="Arris" type="Network Device" />
+    <Vendor name="Billion" type="Network Device" />
+    <!-- IP Cameras -->
+    <Vendor name="Haverford" type="IP Camera" />
+    <Vendor name="Marshall" type="IP Camera" />
+    <Vendor name="Axis" type="IP Camera" />
+    <Vendor name="Hikvision" type="IP Camera" />
+    <Vendor name="Dahua" type="IP Camera" />
+    <Vendor name="FLIR" type="IP Camera" />
+    <Vendor name="Pelco" type="IP Camera" />
+    <Vendor name="Uniview" type="IP Camera" />
+    <Vendor name="Bosch" type="IP Camera" />
+    <Vendor name="Honeywell" type="IP Camera" />
+    <!-- Printers -->
+    <Vendor name="Sharp" type="Printer" />
+    <Vendor name="Ricoh" type="Printer" />
+    <Vendor name="Xerox" type="Printer" />
+    <Vendor name="Canon" type="Printer" />
+    <Vendor name="Epson" type="Printer" />
+    <Vendor name="Brother" type="Printer" />
+    <Vendor name="Kyocera" type="Printer" />
+    <Vendor name="Lexmark" type="Printer" />
+    <Vendor name="Konica" type="Printer" />
+    <Vendor name="Okidata" type="Printer" />
+    <!-- Displays -->
+    <Vendor name="LG" type="Display" />
+    <Vendor name="Samsung" type="Display" />
+    <Vendor name="Sony" type="Display" />
+    <Vendor name="Panasonic" type="Display" />
+    <Vendor name="Philips" type="Display" />
+    <Vendor name="Vizio" type="Display" />
+    <Vendor name="Hisense" type="Display" />
+    <!-- AV Routing -->
+    <Vendor name="Wyrestorm" type="Video Routing" />
+    <Vendor name="Blackmagic" type="Video Routing" />
+    <Vendor name="Kramer" type="Video Routing" />
+    <Vendor name="Avocor" type="Video Routing" />
+    <Vendor name="Barco" type="Video Routing" />
+    <Vendor name="Gefen" type="Video Routing" />
+    <Vendor name="Atlona" type="Video Routing" />
+    <Vendor name="Lightware" type="Video Routing" />
+    <!-- VoIP Phones -->
+    <Vendor name="Polycom" type="VoIP Phone" />
+    <Vendor name="Yealink" type="VoIP Phone" />
+    <Vendor name="Avaya" type="VoIP Phone" />
+    <Vendor name="Grandstream" type="VoIP Phone" />
+    <Vendor name="Aastra" type="VoIP Phone" />
+    <Vendor name="Snom" type="VoIP Phone" />
+    <!-- NAS / Storage -->
+    <Vendor name="Drobo" type="NAS/Storage" />
+    <Vendor name="QNAP" type="NAS/Storage" />
+    <Vendor name="Synology" type="NAS/Storage" />
+    <Vendor name="WD" type="NAS/Storage" />
+    <Vendor name="Western Digital" type="NAS/Storage" />
+    <Vendor name="Seagate" type="NAS/Storage" />
+    <Vendor name="Buffalo" type="NAS/Storage" />
+    <!-- Apple -->
+    <Vendor name="Apple" type="Apple Device" />
+    <!-- Smart Home -->
+    <Vendor name="Google" type="Smart Home" />
+    <Vendor name="Nest" type="Smart Home" />
+    <Vendor name="Amazon" type="Smart Home" />
+    <Vendor name="Alexa" type="Smart Home" />
+    <Vendor name="Echo" type="Smart Home" />
+    <Vendor name="Tuya" type="Smart Home" />
+    <Vendor name="SmartThings" type="Smart Home" />
+    <!-- AV Receivers -->
+    <Vendor name="Onkyo" type="AV Receiver" />
+    <Vendor name="Denon" type="AV Receiver" />
+    <Vendor name="Pioneer" type="AV Receiver" />
+    <Vendor name="Marantz" type="AV Receiver" />
+    <!-- Mobile Devices -->
+    <Vendor name="ZTE" type="Mobile Device" />
+    <Vendor name="OnePlus" type="Mobile Device" />
+    <Vendor name="Xiaomi" type="Mobile Device" />
+    <Vendor name="Nokia" type="Mobile Device" />
+    <Vendor name="Realme" type="Mobile Device" />
+    <Vendor name="Oppo" type="Mobile Device" />
+    <Vendor name="Motorola" type="Mobile Device" />
+    <!-- Components -->
+    <Vendor name="Nvidia" type="Component" />
+    <Vendor name="AMD" type="Component" />
+    <Vendor name="Broadcom" type="Component" />
+    <Vendor name="Realtek" type="Component" />
+    <Vendor name="Qualcomm" type="Component" />
+    <Vendor name="MediaTek" type="Component" />
+    <Vendor name="Marvell" type="Component" />
+    <!-- Embedded / SBC -->
+    <Vendor name="Raspberry" type="Embedded Device" />
+    <Vendor name="Arduino" type="Embedded Device" />
+    <Vendor name="Jetson" type="Embedded Device" />
+    <Vendor name="Beaglebone" type="Embedded Device" />
+</VendorMappings>
