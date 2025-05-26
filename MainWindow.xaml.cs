@@ -439,67 +439,32 @@ namespace StackSuite
             }
             return false;
         }
+        private void SshSessionTree_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (SshSessionTree.SelectedItem is TreeViewItem item && item.Tag is TabItem tab)
+            {
+                SshSessionTabControl.SelectedItem = tab;
+            }
+        }
+
+        private void SftpSessionTree_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (SftpSessionTree.SelectedItem is TreeViewItem item && item.Tag is TabItem tab)
+            {
+                SftpSessionTabControl.SelectedItem = tab;
+            }
+        }
 
         private void ShowOfflineToggle_Changed(object sender, RoutedEventArgs e)
         {
             _resultsView.Refresh();
         }
 
-        private void NewSshSessionTab_Click(object sender, MouseButtonEventArgs e)
-        {
-            var timestamp = DateTime.Now.ToString("HH:mm:ss");
-            var newTab = new TabItem
-            {
-                Header = $"SSH: {timestamp}",
-                HeaderTemplate = (DataTemplate)FindResource("ClosableTabHeaderTemplate"),
-                Content = new TextBox
-                {
-                    Text = $"[Placeholder] SSH session started at {timestamp}",
-                    FontFamily = new FontFamily("Consolas"),
-                    Background = Brushes.Black,
-                    Foreground = Brushes.LightGreen,
-                    AcceptsReturn = true,
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    Margin = new Thickness(8),
-                    Padding = new Thickness(10)
-                }
-            };
-
-            SshSessionTabControl.Items.Insert(SshSessionTabControl.Items.Count - 1, newTab);
-            SshSessionTabControl.SelectedItem = newTab;
-
-            if (e != null) e.Handled = true;
-        }
-
-
-        private void NewSftpSessionTab_Click(object sender, MouseButtonEventArgs e)
-        {
-            var timestamp = DateTime.Now.ToString("HH:mm:ss");
-            var newTab = new TabItem
-            {
-                Header = $"SFTP: {timestamp}",
-                HeaderTemplate = (DataTemplate)FindResource("ClosableTabHeaderTemplate"),
-                Content = new TextBlock
-                {
-                    Text = $"[Placeholder] SFTP session started at {timestamp}",
-                    FontFamily = new FontFamily("Segoe UI"),
-                    Foreground = Brushes.White,
-                    Margin = new Thickness(10),
-                    Padding = new Thickness(10)
-                }
-            };
-
-            SftpSessionTabControl.Items.Insert(SftpSessionTabControl.Items.Count - 1, newTab);
-            SftpSessionTabControl.SelectedItem = newTab;
-
-            if (e != null) e.Handled = true;
-        }
-
-
         private void ConnectSshSession_Click(object sender, RoutedEventArgs e)
         {
             string host = SshHostInput.Text.Trim();
             string user = SshUsernameInput.Text.Trim();
+            string password = SshPasswordInput.Password.Trim(); // You can use this securely later
 
             if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user))
             {
@@ -508,6 +473,7 @@ namespace StackSuite
             }
 
             string title = $"SSH: {user}@{host}";
+
             var newTab = new TabItem
             {
                 Header = title,
@@ -525,16 +491,41 @@ namespace StackSuite
                 }
             };
 
-            SshSessionTabControl.Items.Insert(SshSessionTabControl.Items.Count - 1, newTab);
+            SshSessionTabControl.Items.Add(newTab);
             SshSessionTabControl.SelectedItem = newTab;
-        }
 
+            // Add to TreeView under parent node
+            TreeViewItem rootNode;
+
+            if (SshSessionTree.Items.Count == 0)
+            {
+                rootNode = new TreeViewItem
+                {
+                    Header = "📡 Active SSH Sessions",
+                    IsExpanded = true
+                };
+                SshSessionTree.Items.Add(rootNode);
+            }
+            else
+            {
+                rootNode = SshSessionTree.Items[0] as TreeViewItem;
+            }
+
+            var sessionNode = new TreeViewItem
+            {
+                Header = $"{user}@{host}",
+                Tag = newTab
+            };
+
+            rootNode?.Items.Add(sessionNode);
+        }
 
 
         private void ConnectSftpSession_Click(object sender, RoutedEventArgs e)
         {
             string host = SftpHostInput.Text.Trim();
             string user = SftpUsernameInput.Text.Trim();
+            string password = SftpPasswordInput.Password.Trim();
 
             if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user))
             {
@@ -543,6 +534,7 @@ namespace StackSuite
             }
 
             string title = $"SFTP: {user}@{host}";
+
             var newTab = new TabItem
             {
                 Header = title,
@@ -557,10 +549,34 @@ namespace StackSuite
                 }
             };
 
-            SftpSessionTabControl.Items.Insert(SftpSessionTabControl.Items.Count - 1, newTab);
+            SftpSessionTabControl.Items.Add(newTab);
             SftpSessionTabControl.SelectedItem = newTab;
-        }
 
+            // === ADD TO TREE UNDER PARENT ===
+            TreeViewItem rootNode;
+
+            if (SftpSessionTree.Items.Count == 0)
+            {
+                rootNode = new TreeViewItem
+                {
+                    Header = "📁 Active SFTP Sessions",
+                    IsExpanded = true
+                };
+                SftpSessionTree.Items.Add(rootNode);
+            }
+            else
+            {
+                rootNode = SftpSessionTree.Items[0] as TreeViewItem;
+            }
+
+            var sessionNode = new TreeViewItem
+            {
+                Header = $"{user}@{host}",
+                Tag = newTab
+            };
+
+            rootNode?.Items.Add(sessionNode);
+        }
 
         private void SshTreeViewItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
@@ -582,11 +598,38 @@ namespace StackSuite
                 var tabItem = FindParent<TabItem>(button);
                 var tabControl = FindParent<TabControl>(button);
 
-                if (tabItem?.Header?.ToString().Contains("+") == true)
-                    return; // Prevent closing + tabs
+                if (tabItem == null || tabControl == null)
+                    return;
 
-                if (tabItem != null && tabControl != null && tabControl.Items.Contains(tabItem))
-                    tabControl.Items.Remove(tabItem);
+                // Prevent closing the static connection tab (index 0)
+                if (tabControl.Items.IndexOf(tabItem) == 0)
+                    return;
+
+                // Remove corresponding TreeViewItem
+                if (tabControl == SftpSessionTabControl)
+                {
+                    RemoveSessionTreeItem(SftpSessionTree, tabItem);
+                }
+                else if (tabControl == SshSessionTabControl)
+                {
+                    RemoveSessionTreeItem(SshSessionTree, tabItem);
+                }
+
+                tabControl.Items.Remove(tabItem);
+            }
+        }
+        private void RemoveSessionTreeItem(TreeView treeView, TabItem tab)
+        {
+            foreach (var root in treeView.Items.OfType<TreeViewItem>())
+            {
+                foreach (var child in root.Items.OfType<TreeViewItem>().ToList())
+                {
+                    if (child.Tag == tab)
+                    {
+                        root.Items.Remove(child);
+                        return;
+                    }
+                }
             }
         }
 

@@ -229,75 +229,117 @@
                 <TabItem Header="🔐 SSH Console">
                     <Grid>
                         <TabControl x:Name="SshSessionTabControl"
-                         Background="Transparent"
-                         Foreground="White"
-                         FontSize="13">
-                            <TabItem Header="+ New SSH Session" PreviewMouseDown="NewSshSessionTab_Click">
+                    Background="Transparent"
+                    Foreground="White"
+                    FontSize="13">
+                            <!-- Static, unclosable Home tab -->
+                            <TabItem>
+                                <TabItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ConsoleLine" Width="20" Height="20" Margin="0,0,4,0"/>
+                                        <TextBlock Text="SSH Console Manager"/>
+                                    </StackPanel>
+                                </TabItem.Header>
+
                                 <Grid Margin="10">
-                                    <StackPanel Orientation="Horizontal"
-            Margin="10"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Top">
-                                        <TextBox x:Name="SshHostInput" materialDesign:HintAssist.Hint="Host/IP"
-             Margin="0,0,8,0"
-             Width="160"
-             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                                    <StackPanel Orientation="Vertical">
+                                        <!-- SSH Connection Form -->
+                                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Top"
+                                    Margin="0,0,0,12">
+                                            <TextBox x:Name="SshHostInput"
+                                     materialDesign:HintAssist.Hint="Host/IP"
+                                     Margin="0,0,8,0"
+                                     Width="160"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
 
-                                        <TextBox x:Name="SshUsernameInput" materialDesign:HintAssist.Hint="Username"
-             Margin="0,0,8,0"
-             Width="140"
-             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                                            <TextBox x:Name="SshUsernameInput"
+                                     materialDesign:HintAssist.Hint="Username"
+                                     Margin="0,0,8,0"
+                                     Width="140"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
 
-                                        <PasswordBox materialDesign:HintAssist.Hint="Password"
-                 Margin="0,0,8,0"
-                 Width="140"
-                 Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
+                                            <PasswordBox x:Name="SshPasswordInput"
+                                         materialDesign:HintAssist.Hint="Password"
+                                         Margin="0,0,8,0"
+                                         Width="140"
+                                         Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
 
-                                        <Button Content="Connect"
-            Width="100"
-            Style="{StaticResource MaterialDesignRaisedButton}"
-            Click="ConnectSshSession_Click" />
+                                            <Button Content="Connect"
+                                    Width="100"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Click="ConnectSshSession_Click" />
+                                        </StackPanel>
+
+                                        <!-- Session List -->
+                                        <TreeView x:Name="SshSessionTree"
+                                  Background="Transparent"
+                                  Foreground="White"
+                                  FontSize="13"
+                                  MouseLeftButtonUp="SshSessionTree_MouseLeftButtonUp"
+                                  Margin="0,0,0,0" />
                                     </StackPanel>
                                 </Grid>
                             </TabItem>
                         </TabControl>
                     </Grid>
                 </TabItem>
-
                 <!-- SFTP Client Tab -->
                 <TabItem Header="📁 SFTP Client">
                     <Grid>
                         <TabControl x:Name="SftpSessionTabControl"
-                         Background="Transparent"
-                         Foreground="White"
-                         FontSize="13">
-                            <TabItem Header="+ New SFTP Session" PreviewMouseDown="NewSftpSessionTab_Click">
-                                <Grid Margin="10">
-                                    <StackPanel Orientation="Horizontal"
-            Margin="10"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Top">
-                                        <TextBox x:Name="SftpHostInput" materialDesign:HintAssist.Hint="Host/IP"
-             Margin="0,0,8,0"
-             Width="160"
-             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
-
-                                        <TextBox x:Name="SftpUsernameInput" materialDesign:HintAssist.Hint="Username"
-             Margin="0,0,8,0"
-             Width="140"
-             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
-
-                                        <PasswordBox materialDesign:HintAssist.Hint="Password"
-                 Margin="0,0,8,0"
-                 Width="140"
-                 Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
-
-                                        <Button Content="Connect"
-            Width="100"
-            Style="{StaticResource MaterialDesignRaisedButton}"
-            Click="ConnectSftpSession_Click" />
+                    Background="Transparent"
+                    Foreground="White"
+                    FontSize="13">
+                            <!-- Static, unclosable Home tab -->
+                            <TabItem>
+                                <TabItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FileUploadOutline" Width="20" Height="20" Margin="0,0,4,0"/>
+                                        <TextBlock Text="SFTP Connection Manager"/>
                                     </StackPanel>
+                                </TabItem.Header>
 
+                                <Grid Margin="10">
+                                    <StackPanel Orientation="Vertical">
+                                        <!-- SFTP Connection Form -->
+                                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Top"
+                                    Margin="0,0,0,12">
+                                            <TextBox x:Name="SftpHostInput"
+                                     materialDesign:HintAssist.Hint="Host/IP"
+                                     Margin="0,0,8,0"
+                                     Width="160"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+
+                                            <TextBox x:Name="SftpUsernameInput"
+                                     materialDesign:HintAssist.Hint="Username"
+                                     Margin="0,0,8,0"
+                                     Width="140"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+
+                                            <PasswordBox x:Name="SftpPasswordInput"
+                                         materialDesign:HintAssist.Hint="Password"
+                                         Margin="0,0,8,0"
+                                         Width="140"
+                                         Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
+
+                                            <Button Content="Connect"
+                                    Width="100"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Click="ConnectSftpSession_Click" />
+                                        </StackPanel>
+
+                                        <!-- Session List -->
+                                        <TreeView x:Name="SftpSessionTree"
+                                  Background="Transparent"
+                                  Foreground="White"
+                                  FontSize="13"
+                                  MouseLeftButtonUp="SftpSessionTree_MouseLeftButtonUp"
+                                  Margin="0,0,0,0" />
+                                    </StackPanel>
                                 </Grid>
                             </TabItem>
                         </TabControl>
