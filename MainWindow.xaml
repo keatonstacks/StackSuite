@@ -73,8 +73,25 @@
                         <StackPanel>
                             <TextBlock Text="About StackSuite" FontWeight="SemiBold" FontSize="18" Margin="0,0,0,8"/>
                             <TreeView x:Name="HomeTreeView" Background="Transparent" Foreground="White">
-                                <TreeViewItem Header="Version: 1.0.0  - Release Notes"/>
-                                <TreeViewItem Header="Network Testing" MouseLeftButtonUp="NetworkTestingTreeViewItem_MouseLeftButtonUp"/>
+                                <TreeViewItem Header="📘 Version: 1.0.0.0 – Read Me">
+                                    <TreeViewItem Header="View full project readme and version history"
+                      MouseLeftButtonUp="TreeViewItem_ReadMe_Selected" />
+                                </TreeViewItem>
+
+                                <TreeViewItem Header="🌐 Network Tester">
+                                    <TreeViewItem Header="Scan adapters, subnets, IP ranges, or host lists"
+                      MouseLeftButtonUp="NetworkTestingTreeViewItem_MouseLeftButtonUp" />
+                                </TreeViewItem>
+
+                                <TreeViewItem Header="🔐 SSH Console">
+                                    <TreeViewItem Header="Terminal shell access to reachable SSH hosts"
+                      MouseLeftButtonUp="SshTreeViewItem_MouseLeftButtonUp" />
+                                </TreeViewItem>
+
+                                <TreeViewItem Header="📁 SFTP Client">
+                                    <TreeViewItem Header="Graphical file upload/download over SSH"
+                      MouseLeftButtonUp="SftpTreeViewItem_MouseLeftButtonUp" />
+                                </TreeViewItem>
                             </TreeView>
                         </StackPanel>
                     </Grid>
@@ -169,10 +186,145 @@
                             materialDesign:HintAssist.Hint="Network Interface"
                             Style="{StaticResource MaterialDesignOutlinedComboBox}" />
                         </StackPanel>
-                        <DataGrid x:Name="NetTesterResults" AutoGenerateColumns="True" AutoGeneratingColumn="NetTesterResults_AutoGeneratingColumn" HeadersVisibility="Column" CanUserSortColumns="True" CanUserResizeColumns="True" IsReadOnly="True" Background="Transparent" Foreground="White" GridLinesVisibility="Horizontal" FontSize="14" materialDesign:DataGridAssist.CellPadding="8"/>
+                        <DataGrid x:Name="NetTesterResults"
+                                  KeyDown="NetTesterResults_KeyDown"
+          AutoGenerateColumns="True"
+          AutoGeneratingColumn="NetTesterResults_AutoGeneratingColumn"
+          HeadersVisibility="Column"
+          CanUserSortColumns="True"
+          CanUserResizeColumns="True"
+          IsReadOnly="True"
+          Background="Transparent"
+          Foreground="White"
+          GridLinesVisibility="Horizontal"
+          FontSize="14"
+          materialDesign:DataGridAssist.CellPadding="8"
+          Padding="4"
+          ContextMenuOpening="NetTesterRow_ContextMenuOpening">
+
+                            <DataGrid.Resources>
+                                <ContextMenu x:Key="HostContextMenu" Placement="MousePoint">
+                                    <MenuItem Header="🖥 Open in RDP"
+                      Click="OpenInRdp_Click" />
+                                    <MenuItem Header="🔐 Open in SSH Console"
+                      Click="OpenInSsh_Click"
+                      x:Name="SSHMenuItem" />
+                                    <MenuItem Header="🌐 Open Web UI (HTTP)"
+                      Click="OpenHttp_Click"
+                      x:Name="HttpMenuItem" />
+                                    <MenuItem Header="📂 Browse via UNC Path"
+                      Click="OpenUnc_Click" />
+                                </ContextMenu>
+                            </DataGrid.Resources>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                                    <Setter Property="ContextMenu" Value="{StaticResource HostContextMenu}" />
+                                    <EventSetter Event="ContextMenuOpening" Handler="NetTesterRow_ContextMenuOpening" />
+                                </Style>
+                            </DataGrid.RowStyle>
+                        </DataGrid>
                     </DockPanel>
+                </TabItem>
+                <!-- SSH Console Tab -->
+                <TabItem Header="🔐 SSH Console">
+                    <Grid>
+                        <TabControl x:Name="SshSessionTabControl"
+                         Background="Transparent"
+                         Foreground="White"
+                         FontSize="13">
+                            <TabItem Header="+ New SSH Session" PreviewMouseDown="NewSshSessionTab_Click">
+                                <Grid Margin="10">
+                                    <StackPanel Orientation="Horizontal"
+            Margin="10"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top">
+                                        <TextBox x:Name="SshHostInput" materialDesign:HintAssist.Hint="Host/IP"
+             Margin="0,0,8,0"
+             Width="160"
+             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+
+                                        <TextBox x:Name="SshUsernameInput" materialDesign:HintAssist.Hint="Username"
+             Margin="0,0,8,0"
+             Width="140"
+             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+
+                                        <PasswordBox materialDesign:HintAssist.Hint="Password"
+                 Margin="0,0,8,0"
+                 Width="140"
+                 Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
+
+                                        <Button Content="Connect"
+            Width="100"
+            Style="{StaticResource MaterialDesignRaisedButton}"
+            Click="ConnectSshSession_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </TabItem>
+                        </TabControl>
+                    </Grid>
+                </TabItem>
+
+                <!-- SFTP Client Tab -->
+                <TabItem Header="📁 SFTP Client">
+                    <Grid>
+                        <TabControl x:Name="SftpSessionTabControl"
+                         Background="Transparent"
+                         Foreground="White"
+                         FontSize="13">
+                            <TabItem Header="+ New SFTP Session" PreviewMouseDown="NewSftpSessionTab_Click">
+                                <Grid Margin="10">
+                                    <StackPanel Orientation="Horizontal"
+            Margin="10"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top">
+                                        <TextBox x:Name="SftpHostInput" materialDesign:HintAssist.Hint="Host/IP"
+             Margin="0,0,8,0"
+             Width="160"
+             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+
+                                        <TextBox x:Name="SftpUsernameInput" materialDesign:HintAssist.Hint="Username"
+             Margin="0,0,8,0"
+             Width="140"
+             Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+
+                                        <PasswordBox materialDesign:HintAssist.Hint="Password"
+                 Margin="0,0,8,0"
+                 Width="140"
+                 Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
+
+                                        <Button Content="Connect"
+            Width="100"
+            Style="{StaticResource MaterialDesignRaisedButton}"
+            Click="ConnectSftpSession_Click" />
+                                    </StackPanel>
+
+                                </Grid>
+                            </TabItem>
+                        </TabControl>
+                    </Grid>
                 </TabItem>
             </TabControl>
         </DockPanel>
     </Border>
+    <Window.Resources>
+        <DataTemplate x:Key="ClosableTabHeaderTemplate">
+            <DockPanel LastChildFill="False" VerticalAlignment="Center">
+                <TextBlock Text="{Binding}" 
+                   VerticalAlignment="Center" 
+                   Margin="0,0,6,0"
+                   Foreground="White" 
+                   FontWeight="SemiBold" />
+
+                <Button Width="20" Height="20"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="0"
+                ToolTip="Close"
+                Click="CloseTab_Click"
+                VerticalAlignment="Center">
+                    <materialDesign:PackIcon Kind="Close" Width="16" Height="16" Foreground="White"/>
+                </Button>
+            </DockPanel>
+        </DataTemplate>
+    </Window.Resources>
 </Window>

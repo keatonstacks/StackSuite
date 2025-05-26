@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -10,8 +7,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace StackSuite.Services
@@ -29,14 +24,13 @@ namespace StackSuite.Services
     public class DeviceInfo
     {
         [DisplayName("Timestamp")] public string TimeStamp { get; set; } = string.Empty;
-        [DisplayName("Name")] public string DisplayName { get; set; } = string.Empty;
+        [DisplayName("IP Address")] public string DisplayName { get; set; } = string.Empty;
         [DisplayName("Resolved Host")] public string ResolvedHost { get; set; } = string.Empty;
         [DisplayName("Status")] public string Status { get; set; } = string.Empty;
         [DisplayName("Open Ports")] public string OpenPorts { get; set; } = string.Empty;
         [DisplayName("Latency")] public string Latency { get; set; } = string.Empty;
         [DisplayName("TTL")] public string TTL { get; set; } = string.Empty;
         [DisplayName("Reply IP")] public string ReplyIP { get; set; } = string.Empty;
-        [DisplayName("Buffer Size")] public string BufferSize { get; set; } = string.Empty;
         [DisplayName("MAC Address")] public string MACAddress { get; set; } = string.Empty;
         [DisplayName("Vendor")] public string Vendor { get; set; } = string.Empty;
         [DisplayName("Device Type")] public string DeviceType { get; set; } = string.Empty;
@@ -55,9 +49,8 @@ namespace StackSuite.Services
         [GeneratedRegex(@"[^A-Fa-f0-9]")]
         private static partial Regex NonHexRegex();
 
-        // 3) Compile-time P/Invoke stub for SendARP
-        [LibraryImport("iphlpapi.dll", EntryPoint = "SendARP")]
-        private static partial int SendARP(int destIP, int srcIP, byte[] macAddress, ref int phyAddrLen);
+        [LibraryImport("iphlpapi.dll")]
+        public static partial int SendARP(int destIP, int srcIP, [Out] byte[] macAddress, ref int macAddressLength);
 
         static NetTesterService()
         {
@@ -165,7 +158,6 @@ namespace StackSuite.Services
                 Latency = string.Empty,
                 TTL = string.Empty,
                 ReplyIP = string.Empty,
-                BufferSize = string.Empty,
                 OpenPorts = string.Empty
             };
 
@@ -180,7 +172,6 @@ namespace StackSuite.Services
                 info.Latency = reply.RoundtripTime + " ms";
                 info.TTL = reply.Options?.Ttl.ToString() ?? string.Empty;
                 info.ReplyIP = reply.Address.ToString();
-                info.BufferSize = reply.Buffer?.Length.ToString() ?? string.Empty;
                 try
                 {
                     info.ResolvedHost = (await Dns.GetHostEntryAsync(reply.Address)).HostName;

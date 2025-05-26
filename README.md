@@ -14,9 +14,13 @@
   - Individual IP addresses or hostnames
   - IP/hostname ranges (e.g., `192.168.1.1-192.168.1.254`)
   - Imported lists from `.txt` or `.csv` files
+  
+- **Interactive Right-Click Tools**
+  - Launch RDP, SSH, web UI, or file share from any scanned host
+  - Context-aware: actions only enabled when ports or device types match
 
 - **Connectivity Testing**  
-  Includes ICMP ping and fallback TCP port probing for deeper reachability analysis (e.g., FTP, HTTP, SSH).
+  Includes ICMP ping with fallback to common TCP port probing (FTP, SSH, Telnet, HTTP, HTTPS).
 
 - **Offline Device Handling**  
   Option to show or hide unreachable (offline) devices in the results grid.
@@ -31,6 +35,12 @@
 
 - **Smart Labeling** *(if enabled)*  
   Automatically classifies device types based on MAC vendor (e.g., Crestron → Control System, Dell → Workstation).
+
+- **Tabbed Remote Tools**  
+StackSuite now includes:
+- 🔐 **SSH Console** for shell access to reachable devices  
+- 📁 **SFTP Client** for secure file upload/download via SSH  
+Each supports multiple dynamic sessions in dedicated tabs, with custom headers and close buttons.
 
 - **Material Design UI**  
   Clean, modern interface using `MaterialDesignInXAML` for dark mode and visual consistency.
@@ -74,6 +84,43 @@ StackSuite.exe
 
 ---
 
+## 📊 Understanding the Results
+
+Each row in the StackSuite scan results represents a discovered device, along with key details:
+
+| Column        | Description |
+|---------------|-------------|
+| **IP Address** | The target host address scanned. |
+| **MAC Address** | Resolved via ARP (local subnet only). |
+| **Vendor**     | Derived from the MAC OUI using local lookup (e.g., Apple, Dell, Cisco). |
+| **Device Type** | Optional smart label based on vendor (e.g., Workstation, Control System). |
+| **Ping Status** | Indicates whether the device responded to ICMP ping or TCP fallback. |
+| **Latency (ms)** | Round-trip time for ICMP ping (lower = faster). |
+| **TTL**        | Time-to-Live value from the reply — can hint at OS type (see below). |
+
+### 🧠 Interpreting TTL Values
+
+TTL (Time-To-Live) can hint at the operating system of the responding device:
+
+| TTL Value | Likely OS / Device Type |
+|-----------|--------------------------|
+| 128       | Windows (default) |
+| 64        | Linux, Unix, Android |
+| 32        | macOS, iOS, Apple devices (sometimes) |
+| 255       | Cisco, network infrastructure |
+
+> Note: TTL can vary due to firewalls, proxying, or hop count. Treat it as a heuristic, not a guarantee.
+
+### 🔌 Offline Devices
+
+Devices that fail both ping and TCP fallback checks are considered **offline**. You can toggle visibility of these rows using the **"Show Offline Devices"** switch.
+
+### 📤 Exporting
+
+Use the **Export to CSV** feature to save current scan results, including both online and (optionally) offline devices, for auditing or reporting.
+
+---
+
 ## 📦 Single Executable Notes
 
 StackSuite is packaged using `.NET 8` single-file publish options with trimming disabled for compatibility:
@@ -93,6 +140,9 @@ StackSuite is packaged using `.NET 8` single-file publish options with trimming 
 
 - **Device Type Detection**  
   Optional XML-based mappings classify devices into categories.
+
+- **Contextual UI Actions**
+  Dynamically enables or disables right-click actions like RDP and UNC browsing based on MAC vendor and open ports (e.g., skips Apple for RDP).
 
 ---
 
@@ -118,6 +168,42 @@ StackSuite is packaged using `.NET 8` single-file publish options with trimming 
   - `SendARP` via `iphlpapi.dll` (for MAC resolution)
 
 - Supports threading and concurrency limits to avoid UI freezing.
+
+
+---
+
+## 🗒️ Revision History
+
+### Version 1.0.0.0 – Initial Public Release
+- First stable release of StackSuite.
+- Added full support for:
+  - Subnet, range, and list-based host scanning
+  - Network adapter selection
+  - Host reachability testing via ICMP ping and TCP fallback (ports: 21, 22, 23, 80, 443)
+  - CSV export of scan results
+  - Toggle for showing/hiding offline devices
+  - MAC address vendor lookup and smart device-type labeling
+- Fully themed UI using MaterialDesignInXAML (Dark Mode)
+- Packaged as a self-contained `.NET 8` single-file executable
+
+### 🔧 Usability & Interaction Enhancements
+- **Right-click context menu** on each scanned host with:
+  - 🖥️ Open in RDP
+  - 🔐 Open in SSH Console
+  - 🌐 Open Web UI (HTTP/HTTPS)
+  - 📂 Browse via UNC Path
+- Context menu dynamically enables actions based on:
+  - Open ports
+  - Device type (e.g., Workstation, Server)
+  - MAC vendor (e.g., Apple = no RDP/UNC)
+- **SSH Console & SFTP Client Tabs**  
+  - Launch from main navigation or right-click  
+  - Spawn multiple dynamic tabs for each session  
+  - Tab headers show `username@host`, closable with `×` icon
+- **Ctrl+C** support to copy selected row(s) as tab-separated values (Excel-friendly)
+- **Double-click** on a row opens a detailed host information popup *(coming soon)*
+
+> Future versions will expand support for deeper service detection, diagnostics tools (e.g., `traceroute`, `nmap` integration), scheduled scanning, and headless/CLI operation.
 
 ---
 
