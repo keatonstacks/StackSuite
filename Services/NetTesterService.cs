@@ -337,19 +337,21 @@ namespace StackSuite.Services
                             .Where(u => u.Address.AddressFamily == AddressFamily.InterNetwork
                                      && u.IPv4Mask != null))
                 {
-                    // compute network and broadcast in host‐order
-                    var ipBytes = uni.Address.GetAddressBytes().Reverse().ToArray();
-                    var maskBytes = uni.IPv4Mask.GetAddressBytes().Reverse().ToArray();
-                    uint ipInt = BitConverter.ToUInt32(ipBytes, 0);
-                    uint maskInt = BitConverter.ToUInt32(maskBytes, 0);
+                    var ipBytes = uni.Address.GetAddressBytes();
+                    var maskBytes = uni.IPv4Mask.GetAddressBytes();
+
+                    // Convert to uint in network byte order
+                    uint ipInt = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(ipBytes, 0));
+                    uint maskInt = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(maskBytes, 0));
                     uint network = ipInt & maskInt;
                     uint broadcast = network | ~maskInt;
 
+                    // Skip network and broadcast addresses
                     for (uint x = network + 1; x < broadcast; x++)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        var b = BitConverter.GetBytes(x).Reverse().ToArray();
-                        hosts.Add(new IPAddress(b).ToString());
+                        var addrBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)x));
+                        hosts.Add(new IPAddress(addrBytes).ToString());
                     }
                 }
             }

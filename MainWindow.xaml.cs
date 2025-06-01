@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using Renci.SshNet.Sftp;
 using StackSuite.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -20,6 +21,7 @@ namespace StackSuite
         private readonly ObservableCollection<DeviceInfo> _results;
         private readonly ICollectionView _resultsView;
         private CancellationTokenSource? _cts;
+        private readonly Dictionary<TabItem, SftpService> _sftpSessions = new();
 
         public MainWindow()
         {
@@ -520,8 +522,7 @@ namespace StackSuite
             rootNode?.Items.Add(sessionNode);
         }
 
-
-        private void ConnectSftpSession_Click(object sender, RoutedEventArgs e)
+        private async void ConnectSftpSession_Click(object sender, RoutedEventArgs e)
         {
             string host = SftpHostInput.Text.Trim();
             string user = SftpUsernameInput.Text.Trim();
@@ -533,28 +534,167 @@ namespace StackSuite
                 return;
             }
 
-            string title = $"SFTP: {user}@{host}";
+            var sftpService = new SftpService();
+            try
+            {
+                sftpService.Connect(host, 22, user, password);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"SFTP connection failed: {ex.Message}");
+                sftpService.Dispose();
+                return;
+            }
+
+            // Modern DataGrid for file browser
+            var fileGrid = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                CanUserAddRows = false,
+                CanUserDeleteRows = false,
+                CanUserResizeRows = true,
+                CanUserResizeColumns = true,
+                CanUserSortColumns = true,
+                IsReadOnly = true,
+                SelectionMode = DataGridSelectionMode.Single,
+                SelectionUnit = DataGridSelectionUnit.FullRow,
+                Background = Brushes.Transparent,
+                Foreground = Brushes.White,
+                FontSize = 14,
+                Margin = new Thickness(0, 8, 0, 0),
+                Height = 320
+            };
+
+            fileGrid.Columns.Add(new DataGridTextColumn { Header = "Name", Binding = new System.Windows.Data.Binding("Name"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            fileGrid.Columns.Add(new DataGridTextColumn { Header = "Type", Binding = new System.Windows.Data.Binding("Type"), Width = 100 });
+            fileGrid.Columns.Add(new DataGridTextColumn { Header = "Size", Binding = new System.Windows.Data.Binding("Length"), Width = 100 });
+            fileGrid.Columns.Add(new DataGridTextColumn { Header = "Modified", Binding = new System.Windows.Data.Binding("LastWriteTime"), Width = 180 });
+
+            var pathBox = new TextBox { IsReadOnly = true, Margin = new Thickness(0, 8, 0, 0) };
+            var statusText = new TextBlock { Foreground = Brushes.Gray, Margin = new Thickness(0, 8, 0, 0) };
+
+            async Task LoadDir(string path)
+            {
+                try
+                {
+                    pathBox.Text = path;
+                    var files = await sftpService.ListDirectoryAsync(path);
+                    // Filter out "." and ".." and project to an anonymous type for the grid
+                    var displayFiles = files
+                        .Where(f => f.Name != "." && f.Name != "..")
+                        .Select(f => new
+                        {
+                            f.Name,
+                            Type = f.IsDirectory ? "Folder" : "File",
+                            f.Length,
+                            LastWriteTime = f.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                            SftpFile = f // Keep reference for navigation/download
+                        })
+                        .ToList();
+
+                    fileGrid.ItemsSource = displayFiles;
+                    statusText.Text = $"Listed {displayFiles.Count} items";
+                }
+                catch (Exception ex)
+                {
+                    statusText.Text = $"Error: {ex.Message}";
+                }
+            }
+
+            fileGrid.MouseDoubleClick += async (s, args) =>
+            {
+                var item = fileGrid.SelectedItem;
+                if (item != null)
+                {
+                    var typeProp = item.GetType().GetProperty("Type");
+                    var sftpFileProp = item.GetType().GetProperty("SftpFile");
+                    if (typeProp != null && sftpFileProp != null)
+                    {
+                        var typeValue = typeProp.GetValue(item) as string;
+                        if (typeValue == "Folder")
+                        {
+                            var sftpFile = sftpFileProp.GetValue(item) as SftpFile;
+                            if (sftpFile != null)
+                                await LoadDir(sftpFile.FullName);
+                        }
+                    }
+                }
+            };
+
+            // Up button
+            var upBtn = new Button { Content = "Up", Margin = new Thickness(0, 0, 8, 0) };
+            upBtn.Click += async (s, args) =>
+            {
+                var parent = System.IO.Path.GetDirectoryName(pathBox.Text.TrimEnd('/')) ?? "/";
+                await LoadDir(parent.Replace('\\', '/'));
+            };
+
+            // Download button
+            var downloadBtn = new Button { Content = "Download", Margin = new Thickness(0, 0, 8, 0) };
+            downloadBtn.Click += async (s, args) =>
+            {
+                var item = fileGrid.SelectedItem;
+                if (item != null)
+                {
+                    var typeProp = item.GetType().GetProperty("Type");
+                    var sftpFileProp = item.GetType().GetProperty("SftpFile");
+                    if (typeProp != null && sftpFileProp != null)
+                    {
+                        var typeValue = typeProp.GetValue(item) as string;
+                        if (typeValue == "File")
+                        {
+                            var file = sftpFileProp.GetValue(item) as SftpFile;
+                            var dlg = new SaveFileDialog { FileName = file?.Name };
+                            if (dlg.ShowDialog() == true && file != null)
+                            {
+                                await sftpService.DownloadFileAsync(file.FullName, dlg.FileName);
+                                statusText.Text = $"Downloaded {file.Name}";
+                            }
+                        }
+                    }
+                }
+            };
+
+            // Upload button
+            var uploadBtn = new Button { Content = "Upload" };
+            uploadBtn.Click += async (s, args) =>
+            {
+                var dlg = new OpenFileDialog();
+                if (dlg.ShowDialog() == true)
+                {
+                    string remotePath = pathBox.Text.TrimEnd('/') + "/" + System.IO.Path.GetFileName(dlg.FileName);
+                    await sftpService.UploadFileAsync(dlg.FileName, remotePath);
+                    await LoadDir(pathBox.Text);
+                    statusText.Text = $"Uploaded {System.IO.Path.GetFileName(dlg.FileName)}";
+                }
+            };
+
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            buttonPanel.Children.Add(upBtn);
+            buttonPanel.Children.Add(downloadBtn);
+            buttonPanel.Children.Add(uploadBtn);
+
+            var contentPanel = new StackPanel();
+            contentPanel.Children.Add(pathBox);
+            contentPanel.Children.Add(fileGrid);
+            contentPanel.Children.Add(buttonPanel);
+            contentPanel.Children.Add(statusText);
 
             var newTab = new TabItem
             {
-                Header = title,
+                Header = $"SFTP: {user}@{host}",
                 HeaderTemplate = (DataTemplate)FindResource("ClosableTabHeaderTemplate"),
-                Content = new TextBlock
-                {
-                    Text = $"[Placeholder] SFTP session to {user}@{host}",
-                    FontFamily = new FontFamily("Segoe UI"),
-                    Foreground = Brushes.White,
-                    Margin = new Thickness(10),
-                    Padding = new Thickness(10)
-                }
+                Content = contentPanel
             };
 
             SftpSessionTabControl.Items.Add(newTab);
             SftpSessionTabControl.SelectedItem = newTab;
 
-            // === ADD TO TREE UNDER PARENT ===
-            TreeViewItem rootNode;
+            // Track the session for cleanup
+            _sftpSessions[newTab] = sftpService;
 
+            // Add to TreeView under parent node
+            TreeViewItem rootNode;
             if (SftpSessionTree.Items.Count == 0)
             {
                 rootNode = new TreeViewItem
@@ -574,8 +714,10 @@ namespace StackSuite
                 Header = $"{user}@{host}",
                 Tag = newTab
             };
-
             rootNode?.Items.Add(sessionNode);
+
+            // Initial directory load
+            await LoadDir("/");
         }
 
         private void SshTreeViewItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -609,6 +751,11 @@ namespace StackSuite
                 if (tabControl == SftpSessionTabControl)
                 {
                     RemoveSessionTreeItem(SftpSessionTree, tabItem);
+                    if (_sftpSessions.TryGetValue(tabItem, out var svc))
+                    {
+                        svc.Dispose();
+                        _sftpSessions.Remove(tabItem);
+                    }
                 }
                 else if (tabControl == SshSessionTabControl)
                 {

@@ -74,7 +74,7 @@
                             <TextBlock Text="About StackSuite" FontWeight="SemiBold" FontSize="18" Margin="0,0,0,8"/>
                             <TreeView x:Name="HomeTreeView" Background="Transparent" Foreground="White">
                                 <TreeViewItem Header="📘 Version: 1.0.0.0 – Read Me">
-                                    <TreeViewItem Header="View full project readme and version history"
+                                    <TreeViewItem Header="Open full project README on GitHub"
                       MouseLeftButtonUp="TreeViewItem_ReadMe_Selected" />
                                 </TreeViewItem>
 
