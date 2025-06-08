@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using StackSuite.ViewModels;
 
 namespace StackSuite.Services
 {
@@ -19,21 +20,6 @@ namespace StackSuite.Services
         public int ArpRetryCount { get; set; } = 3;
         public int ArpRetryDelayMs { get; set; } = 100;
         public IList<int> PortsToScan { get; set; } = new List<int> { 21, 22, 23, 80, 443 };
-    }
-
-    public class DeviceInfo
-    {
-        [DisplayName("Timestamp")] public string TimeStamp { get; set; } = string.Empty;
-        [DisplayName("IP Address")] public string DisplayName { get; set; } = string.Empty;
-        [DisplayName("Resolved Host")] public string ResolvedHost { get; set; } = string.Empty;
-        [DisplayName("Status")] public string Status { get; set; } = string.Empty;
-        [DisplayName("Open Ports")] public string OpenPorts { get; set; } = string.Empty;
-        [DisplayName("Latency")] public string Latency { get; set; } = string.Empty;
-        [DisplayName("TTL")] public string TTL { get; set; } = string.Empty;
-        [DisplayName("Reply IP")] public string ReplyIP { get; set; } = string.Empty;
-        [DisplayName("MAC Address")] public string MACAddress { get; set; } = string.Empty;
-        [DisplayName("Vendor")] public string Vendor { get; set; } = string.Empty;
-        [DisplayName("Device Type")] public string DeviceType { get; set; } = string.Empty;
     }
 
     public partial class NetTesterService

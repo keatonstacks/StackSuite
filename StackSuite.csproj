@@ -33,7 +33,10 @@
     <PackageReference Include="MaterialDesignColors" Version="5.2.1" />
     <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
     <PackageReference Include="MaterialDesignThemes.MahApps" Version="5.2.1" />
+    <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.5" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
     <PackageReference Include="SSH.NET" Version="2025.0.0" />
+    <PackageReference Include="WindowsAPICodePack-Core" Version="1.1.2" />
   </ItemGroup>
 
   <ItemGroup>

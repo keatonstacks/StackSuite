@@ -3,10 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:StackSuite"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:local="clr-namespace:StackSuite.Converters"
+        xmlns:behaviors="clr-namespace:StackSuite.Behaviors"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:vm="clr-namespace:StackSuite.ViewModels"
         mc:Ignorable="d"
-        Title="StackSuite" Height="637" Width="1406"
+        Title="StackSuite"
+        Height="700"
+        Width="1406"
         Style="{StaticResource BorderlessMaterialWindow}"
         Background="Transparent"
         AllowsTransparency="True"
@@ -15,358 +20,898 @@
         ResizeMode="NoResize"
         Icon="/StackSuiteImage.png">
 
-    <!-- Card-like Border for the whole window -->
-    <Border CornerRadius="12" Margin="0" Background="{DynamicResource MaterialDesignPaper}">
+    <!-- ─────────────────────────────────────────────────────────────
+         Use MainWindowViewModel as DataContext
+         ───────────────────────────────────────────────────────────── -->
+    <Window.DataContext>
+        <vm:MainWindowViewModel />
+    </Window.DataContext>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         Window Resources: DataTemplates for SSH & SFTP sessions
+         ───────────────────────────────────────────────────────────── -->
+    <Window.Resources>
+        <local:BoolToConnectionIconConverter x:Key="BoolToConnectionIconConverter"/>
+        <local:BoolToConnectionColorConverter x:Key="BoolToConnectionColorConverter"/>
+        <!-- 1) SSH Session Tab Template -->
+        <DataTemplate DataType="{x:Type vm:SshSessionViewModel}">
+            <Grid Background="Transparent" Margin="8">
+                <TextBlock Text="SSH Session:"
+                           Foreground="White"
+                           FontWeight="SemiBold"
+                           FontSize="16"/>
+                <TextBlock Text="{Binding ConnectionKey}"
+                           Foreground="LightGreen"
+                           Margin="100,0,0,0"
+                           FontWeight="SemiBold"
+                           FontSize="16"/>
+            </Grid>
+        </DataTemplate>
+
+        <!-- 2) SFTP Session Tab Template -->
+        <DataTemplate DataType="{x:Type vm:SftpSessionViewModel}">
+            <Grid Margin="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Path display -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Separator -->
+                    <RowDefinition Height="*"/>
+                    <!-- File DataGrid -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Buttons -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Status text -->
+                </Grid.RowDefinitions>
+
+                <!-- 2.1) CURRENT REMOTE PATH -->
+                <TextBox Grid.Row="0"
+                         Text="{Binding CurrentPath}"
+                         IsReadOnly="True"
+                         Foreground="White"
+                         Background="{DynamicResource MaterialDesignPaper}"
+                         Margin="0,0,0,4"
+                         Padding="8,4"
+                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                         materialDesign:HintAssist.Hint="Remote Path"
+                         FontSize="14"/>
+
+                <!-- 2.2) Separator -->
+                <Separator Grid.Row="1"
+                           Margin="0,4,0,4"
+                           Background="{DynamicResource PrimaryHueMidBrush}"
+                           Height="1"/>
+
+                <DataGrid Grid.Row="2"
+          x:Name="SftpFileGrid"
+          AutoGenerateColumns="False"
+          CanUserAddRows="False"
+          CanUserDeleteRows="False"
+          CanUserResizeColumns="True"
+          CanUserSortColumns="True"
+          IsReadOnly="True"
+          SelectionMode="Extended"
+          SelectionUnit="FullRow"
+          Background="Transparent"
+          Foreground="White"
+          GridLinesVisibility="Horizontal"
+          FontSize="14"
+          Padding="4"
+          materialDesign:DataGridAssist.CellPadding="8"
+          ItemsSource="{Binding DirectoryItems}"
+          Margin="0,0,0,8"
+          HeadersVisibility="Column">
+
+                    <!-- 1) Exactly the same RowStyle that Network Tester uses -->
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}"/>
+                    </DataGrid.RowStyle>
+
+                    <!-- 2) (Optional) If you need a double-click to navigate into a folder -->
+                    <i:Interaction.Triggers>
+                        <i:EventTrigger EventName="MouseDoubleClick">
+                            <i:InvokeCommandAction
+                Command="{Binding NavigateDirectoryCommand}"
+                CommandParameter="{Binding SelectedItem, ElementName=SftpFileGrid}"/>
+                        </i:EventTrigger>
+                    </i:Interaction.Triggers>
+
+                    <!-- 3) Columns just like before -->
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name"
+                            Binding="{Binding DisplayName}"
+                            Width="2*" />
+                        <DataGridTextColumn Header="Type"
+                            Binding="{Binding Type}"
+                            Width="100" />
+                        <DataGridTextColumn Header="Size"
+                            Binding="{Binding FormattedSize}"
+                            Width="100" />
+                        <DataGridTextColumn Header="Modified"
+                            Binding="{Binding FormattedDate}"
+                            Width="180" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+
+                <!-- 2.4) BUTTONS PANEL -->
+                <StackPanel Grid.Row="3"
+            Orientation="Horizontal"
+            Margin="0,0,0,8">
+                    <!-- Up -->
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+            Margin="0,0,8,0"
+            Padding="12,6"
+            Command="{Binding UpDirectoryCommand}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- “ArrowUp” icon from MD3 -->
+                            <materialDesign:PackIcon Kind="ArrowUp"
+                                     Width="16"
+                                     Height="16"
+                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="Up"
+                       FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Refresh -->
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+            Margin="0,0,8,0"
+            Padding="12,6"
+            Command="{Binding RefreshDirectoryCommand}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- “Refresh” icon from MD3 -->
+                            <materialDesign:PackIcon Kind="Refresh"
+                                     Width="16"
+                                     Height="16"
+                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="Refresh"
+                       FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Download (with parameter) -->
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+            Margin="0,0,8,0"
+            Padding="12,6">
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="Click">
+                                <i:InvokeCommandAction Command="{Binding DownloadCommand}"
+                                       CommandParameter="{Binding SelectedItems, ElementName=SftpFileGrid}"/>
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- “Download” icon from MD3 -->
+                            <materialDesign:PackIcon Kind="Download"
+                                     Width="16"
+                                     Height="16"
+                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="Download"
+                       FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Upload -->
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+            Margin="0,0,8,0"
+            Padding="12,6"
+            Command="{Binding UploadCommand}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- “Upload” icon from MD3 -->
+                            <materialDesign:PackIcon Kind="Upload"
+                                     Width="16"
+                                     Height="16"
+                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="Upload"
+                       FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Delete (with parameter) -->
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+            Margin="0,0,8,0"
+            Padding="12,6">
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="Click">
+                                <i:InvokeCommandAction Command="{Binding DeleteCommand}"
+                                       CommandParameter="{Binding SelectedItems, ElementName=SftpFileGrid}"/>
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- “Delete” icon from MD3 -->
+                            <materialDesign:PackIcon Kind="Delete"
+                                     Width="16"
+                                     Height="16"
+                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="Delete"
+                       FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- New Folder -->
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+            Padding="12,6"
+            Command="{Binding CreateFolderCommand}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- “FolderPlus” icon from MD3 -->
+                            <materialDesign:PackIcon Kind="FolderPlus"
+                                     Width="16"
+                                     Height="16"
+                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="New Folder"
+                       FontSize="14"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- 2.5) Status Text -->
+                <TextBlock Grid.Row="4"
+           Text="{Binding StatusText}"
+           Foreground="LightGray"
+           FontStyle="Italic"
+           FontSize="12"
+           Margin="0,0,0,0"/>
+
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="ClosableTabHeaderTemplate">
+            <DockPanel LastChildFill="False" VerticalAlignment="Center">
+                <!-- Status Icon -->
+                <materialDesign:PackIcon
+            Kind="{Binding IsConnected, Converter={StaticResource BoolToConnectionIconConverter}}"
+            Width="16"
+            Height="16"
+            Foreground="{Binding IsConnected, Converter={StaticResource BoolToConnectionColorConverter}}"
+            Margin="0,0,6,0"/>
+                <TextBlock Text="{Binding TabTitle}"
+                   VerticalAlignment="Center"
+                   Margin="0,0,6,0"
+                   Foreground="White"
+                   FontWeight="SemiBold"/>
+                <Button
+            Width="20"
+            Height="20"
+            Background="Transparent"
+            BorderThickness="0"
+            Padding="0"
+            ToolTip="Close"
+            VerticalAlignment="Center"
+            Command="{Binding CloseSessionCommand}">
+                    <materialDesign:PackIcon
+                Kind="Close"
+                Width="16"
+                Height="16"
+                Foreground="White" />
+                </Button>
+            </DockPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <!-- ─────────────────────────────────────────────────────────────────────────────
+         Main Layout: Border → DockPanel → TabControl
+         ───────────────────────────────────────────────────────────────────────────── -->
+    <Border CornerRadius="12"
+            Background="{DynamicResource MaterialDesignPaper}"
+            Margin="0">
         <Border.Effect>
-            <DropShadowEffect ShadowDepth="0" BlurRadius="20" Opacity="0.4"/>
+            <DropShadowEffect ShadowDepth="0"
+                              BlurRadius="20"
+                              Opacity="0.4"/>
         </Border.Effect>
 
         <DockPanel>
             <!-- Custom Title Bar -->
-            <Border DockPanel.Dock="Top" Height="48" Background="{DynamicResource PrimaryHueDarkBrush}" MouseLeftButtonDown="CustomTitleBar_MouseLeftButtonDown">
+            <Border DockPanel.Dock="Top"
+                    Height="48"
+                    Background="{DynamicResource PrimaryHueDarkBrush}"
+                    MouseLeftButtonDown="CustomTitleBar_MouseLeftButtonDown">
                 <Grid Margin="8,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="48"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Image Grid.Column="0" Source="/StackSuiteImage.png" Height="40" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,8,0"/>
-                    <TextBlock Grid.Column="1" Text="StackSuite" FontWeight="Bold" FontSize="18" Foreground="White" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Style="{StaticResource MaterialDesignToolForegroundButton}" Width="36" Height="36" Margin="0,0,4,0" Click="Minimize_Click" Foreground="White">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="WindowMinimize" Width="20" Height="20"/>
-                            </StackPanel>
+                    <Image Grid.Column="0"
+                           Source="/StackSuiteImage.png"
+                           Height="40"
+                           VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           Margin="0,0,8,0"/>
+                    <TextBlock Grid.Column="1"
+                               Text="StackSuite"
+                               FontWeight="Bold"
+                               FontSize="18"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="2"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <Button Style="{StaticResource MaterialDesignToolForegroundButton}"
+                                Width="36"
+                                Height="36"
+                                Margin="0,0,4,0"
+                                Click="Minimize_Click"
+                                Foreground="White">
+                            <materialDesign:PackIcon Kind="WindowMinimize"
+                                                     Width="20"
+                                                     Height="20"/>
                         </Button>
-                        <Button Style="{StaticResource MaterialDesignToolForegroundButton}" Width="36" Height="36" Margin="0,0,4,0" Click="Maximize_Click" Foreground="White">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="WindowMaximize" Width="20" Height="20"/>
-                            </StackPanel>
+                        <Button Style="{StaticResource MaterialDesignToolForegroundButton}"
+                                Width="36"
+                                Height="36"
+                                Margin="0,0,4,0"
+                                Click="Maximize_Click"
+                                Foreground="White">
+                            <materialDesign:PackIcon Kind="WindowMaximize"
+                                                     Width="20"
+                                                     Height="20"/>
                         </Button>
-                        <Button Style="{StaticResource MaterialDesignToolForegroundButton}" Width="36" Height="36" Click="Close_Click" Foreground="White">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="WindowClose" Width="20" Height="20"/>
-                            </StackPanel>
+                        <Button Style="{StaticResource MaterialDesignToolForegroundButton}"
+                                Width="36"
+                                Height="36"
+                                Click="Close_Click"
+                                Foreground="White">
+                            <materialDesign:PackIcon Kind="WindowClose"
+                                                     Width="20"
+                                                     Height="20"/>
                         </Button>
                     </StackPanel>
                 </Grid>
             </Border>
-            <ProgressBar
-              DockPanel.Dock="Bottom"
-              x:Name="ScanProgressBar"
-              Height="4"
-              Margin="0"
-              IsIndeterminate="True"
-              Visibility="Collapsed"
-              Style="{StaticResource MaterialDesignLinearProgressBar}" />
-            <!-- Main Content -->
-            <TabControl x:Name="MainTabControl" Background="Transparent" FontFamily="Segoe UI" FontSize="15" Foreground="White">
-                <!-- Home Tab -->
+
+            <!-- NET TESTER Progress Bar -->
+            <ProgressBar DockPanel.Dock="Bottom"
+                         x:Name="ScanProgressBar"
+                         Height="4"
+                         Margin="0"
+                         IsIndeterminate="True"
+                         Visibility="{Binding ProgressVisibility}"
+                         Style="{StaticResource MaterialDesignLinearProgressBar}"/>
+
+            <!-- Main TabControl -->
+            <TabControl x:Name="MainTabControl"
+                        Background="Transparent"
+                        SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                        FontFamily="Segoe UI"
+                        FontSize="15"
+                        Foreground="White">
+
+                <!-- ───────────────────────────────────────────────────────────
+                     Home Tab (improved spacing & icons)
+                     ─────────────────────────────────────────────────────────── -->
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Home" Width="20" Height="20" Margin="0,0,4,0"/>
-                            <TextBlock Text="Home"/>
+                            <materialDesign:PackIcon Kind="Home"
+                                                     Width="22"
+                                                     Height="22"
+                                                     Margin="0,0,6,0"/>
+                            <TextBlock Text="Home"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <Grid Background="Transparent" Margin="24">
+
+                    <Grid Background="Transparent"
+                          Margin="24">
                         <StackPanel>
-                            <TextBlock Text="About StackSuite" FontWeight="SemiBold" FontSize="18" Margin="0,0,0,8"/>
-                            <TreeView x:Name="HomeTreeView" Background="Transparent" Foreground="White">
-                                <TreeViewItem Header="📘 Version: 1.0.0.0 – Read Me">
+                            <TextBlock Text="About StackSuite"
+                                       FontWeight="SemiBold"
+                                       FontSize="18"
+                                       Margin="0,0,0,12"/>
+
+                            <TreeView x:Name="HomeTreeView"
+                                      Background="Transparent"
+                                      Foreground="White"
+                                      FontSize="14"
+                                      ItemContainerStyle="{StaticResource MaterialDesignTreeViewItem}">
+                                <!-- README Item -->
+                                <TreeViewItem Header="📘 Version: 1.0.0.0 – Read Me"
+                                              Padding="8,4">
                                     <TreeViewItem Header="Open full project README on GitHub"
-                      MouseLeftButtonUp="TreeViewItem_ReadMe_Selected" />
+                                                  Padding="24,4,4,4">
+                                        <i:Interaction.Triggers>
+                                            <i:EventTrigger EventName="MouseLeftButtonUp">
+                                                <i:InvokeCommandAction Command="{Binding GoToHomeTabCommand}" />
+                                            </i:EventTrigger>
+                                        </i:Interaction.Triggers>
+                                    </TreeViewItem>
                                 </TreeViewItem>
 
-                                <TreeViewItem Header="🌐 Network Tester">
+                                <!-- Network Tester Item -->
+                                <TreeViewItem Header="🌐 Network Tester"
+                                              Padding="8,4">
                                     <TreeViewItem Header="Scan adapters, subnets, IP ranges, or host lists"
-                      MouseLeftButtonUp="NetworkTestingTreeViewItem_MouseLeftButtonUp" />
+                                                  Padding="24,4,4,4">
+                                        <i:Interaction.Triggers>
+                                            <i:EventTrigger EventName="MouseLeftButtonUp">
+                                                <i:InvokeCommandAction Command="{Binding GoToNetTesterTabCommand}" />
+                                            </i:EventTrigger>
+                                        </i:Interaction.Triggers>
+                                    </TreeViewItem>
                                 </TreeViewItem>
 
-                                <TreeViewItem Header="🔐 SSH Console">
+                                <!-- SSH Console Item -->
+                                <TreeViewItem Header="🔐 SSH Console"
+                                              Padding="8,4">
                                     <TreeViewItem Header="Terminal shell access to reachable SSH hosts"
-                      MouseLeftButtonUp="SshTreeViewItem_MouseLeftButtonUp" />
+                                                  Padding="24,4,4,4">
+                                        <i:Interaction.Triggers>
+                                            <i:EventTrigger EventName="MouseLeftButtonUp">
+                                                <i:InvokeCommandAction Command="{Binding GoToSshTabCommand}" />
+                                            </i:EventTrigger>
+                                        </i:Interaction.Triggers>
+                                    </TreeViewItem>
                                 </TreeViewItem>
 
-                                <TreeViewItem Header="📁 SFTP Client">
+                                <!-- SFTP Client Item -->
+                                <TreeViewItem Header="📁 SFTP Client"
+                                              Padding="8,4">
                                     <TreeViewItem Header="Graphical file upload/download over SSH"
-                      MouseLeftButtonUp="SftpTreeViewItem_MouseLeftButtonUp" />
+                                                  Padding="24,4,4,4">
+                                        <i:Interaction.Triggers>
+                                            <i:EventTrigger EventName="MouseLeftButtonUp">
+                                                <i:InvokeCommandAction Command="{Binding GoToSftpTabCommand}" />
+                                            </i:EventTrigger>
+                                        </i:Interaction.Triggers>
+                                    </TreeViewItem>
                                 </TreeViewItem>
                             </TreeView>
                         </StackPanel>
                     </Grid>
                 </TabItem>
 
-                <!-- Network Tester Tab -->
+                <!-- ───────────────────────────────────────────────────────────
+                     Network Tester Tab
+                     ─────────────────────────────────────────────────────────── -->
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Lan" Width="20" Height="20" Margin="0,0,4,0"/>
-                            <TextBlock Text="Network Tester"/>
+                            <materialDesign:PackIcon Kind="Lan"
+                                                     Width="22"
+                                                     Height="22"
+                                                     Margin="0,0,6,0"/>
+                            <TextBlock Text="Network Tester"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"/>
                         </StackPanel>
                     </TabItem.Header>
+
                     <DockPanel Background="Transparent">
                         <!-- Toolbar -->
-                        <StackPanel Orientation="Horizontal" Margin="16,12" DockPanel.Dock="Top">
-                            <TextBox x:Name="NetTesterHostIP" Width="360" Margin="0,0,8,0" FontSize="16" VerticalContentAlignment="Center" materialDesign:HintAssist.Hint="Enter IP or Range"/>
-                            <Button x:Name="ScanButton" Style="{StaticResource MaterialDesignRaisedButton}" Margin="0,0,8,0" Padding="12,8" Click="ScanButton_Click" Height="38" Width="102">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Magnify" Width="24" Height="24"/>
-                                    <TextBlock Text="Scan" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="CancelButton" Style="{StaticResource MaterialDesignRaisedButton}" Margin="0,0,8,0" Padding="12,8" Click="CancelButton_Click" IsEnabled="False" Width="110" Height="38">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Cancel" Width="24" Height="24"/>
-                                    <TextBlock Text="Cancel" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ImportButton"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Margin="0,0,8,0"
-                            Padding="12,8"
-                            Click="ImportButton_Click"
-                            materialDesign:HintAssist.Hint="Load IPs from file"
-                            Height="38" Width="110">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="FileImport" Width="24" Height="24"/>
-                                    <TextBlock Text="Import" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="ExportButton"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="16,12"
+                                    DockPanel.Dock="Top"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center">
+                            <TextBox Width="360"
+                                     Margin="0,0,8,0"
+                                     FontSize="16"
+                                     VerticalContentAlignment="Center"
+                                     materialDesign:HintAssist.Hint="Enter IP or Range"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                     Text="{Binding HostOrIp, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <Button Style="{StaticResource MaterialDesignRaisedButton}"
                                     Margin="0,0,8,0"
                                     Padding="12,8"
-                                    Click="ExportButton_Click"
-                                    materialDesign:HintAssist.Hint="Export results to file"
-                                    Height="38" Width="110">
+                                    Command="{Binding ScanCommand}"
+                                    Height="38"
+                                    Width="102">
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="FileExport" Width="24" Height="24"/>
-                                    <TextBlock Text="Export" Margin="8,0,0,0"/>
+                                    <materialDesign:PackIcon Kind="Magnify"
+                                                             Width="24"
+                                                             Height="24"/>
+                                    <TextBlock Text="Scan"
+                                               Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
-                            <ToggleButton x:Name="ShowOfflineToggle"
-                                          Width="40" Height="40"
+
+                            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Margin="0,0,8,0"
+                                    Padding="12,8"
+                                    Command="{Binding CancelCommand}"
+                                    IsEnabled="{Binding IsCancelEnabled}"
+                                    Width="110"
+                                    Height="38">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Cancel"
+                                                             Width="24"
+                                                             Height="24"/>
+                                    <TextBlock Text="Cancel"
+                                               Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Margin="0,0,8,0"
+                                    Padding="12,8"
+                                    Command="{Binding ImportCommand}"
+                                    Height="38"
+                                    Width="110">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileImport"
+                                                             Width="24"
+                                                             Height="24"/>
+                                    <TextBlock Text="Import"
+                                               Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Margin="0,0,8,0"
+                                    Padding="12,8"
+                                    Command="{Binding ExportCommand}"
+                                    Height="38"
+                                    Width="110">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileExport"
+                                                             Width="24"
+                                                             Height="24"/>
+                                    <TextBlock Text="Export"
+                                               Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <ToggleButton Width="40"
+                                          Height="40"
                                           Margin="0,0,8,0"
-                                          Checked="ShowOfflineToggle_Changed"
-                                          Unchecked="ShowOfflineToggle_Changed">
+                                          IsChecked="{Binding ShowOffline}">
                                 <ToggleButton.Style>
-                                    <Style TargetType="ToggleButton" BasedOn="{StaticResource MaterialDesignFloatingActionButton}">
-                                        <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}"/>
-                                        <Setter Property="Foreground" Value="White"/>
+                                    <Style TargetType="ToggleButton"
+                                           BasedOn="{StaticResource MaterialDesignFloatingActionButton}">
+                                        <Setter Property="Background"
+                                                Value="{DynamicResource MaterialDesignPaper}"/>
+                                        <Setter Property="Foreground"
+                                                Value="White"/>
                                         <Style.Triggers>
-                                            <Trigger Property="IsChecked" Value="True">
-                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                                                <Setter Property="Foreground" Value="White"/>
+                                            <Trigger Property="IsChecked"
+                                                     Value="True">
+                                                <Setter Property="Background"
+                                                        Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                <Setter Property="Foreground"
+                                                        Value="White"/>
                                             </Trigger>
                                         </Style.Triggers>
                                     </Style>
                                 </ToggleButton.Style>
                                 <materialDesign:PackIcon x:Name="ShowOfflineIcon"
-                                                        Width="24" Height="24"
-                                                        VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                        Width="24"
+                                                        Height="24"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Center">
                                     <materialDesign:PackIcon.Style>
                                         <Style TargetType="materialDesign:PackIcon">
-                                            <Setter Property="Kind" Value="Eye"/>
-                                            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                                            <Setter Property="Kind"
+                                                    Value="Eye"/>
+                                            <Setter Property="Foreground"
+                                                    Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
-                                                    <Setter Property="Kind" Value="EyeOff"/>
-                                                    <Setter Property="Foreground" Value="White"/>
+                                                <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                                             Value="True">
+                                                    <Setter Property="Kind"
+                                                            Value="EyeOff"/>
+                                                    <Setter Property="Foreground"
+                                                            Value="White"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </materialDesign:PackIcon.Style>
                                 </materialDesign:PackIcon>
                             </ToggleButton>
-                            <ComboBox
-                            x:Name="InterfaceComboBox"
-                            Width="494"
-                            DisplayMemberPath="Name"
-                            materialDesign:HintAssist.Hint="Network Interface"
-                            Style="{StaticResource MaterialDesignOutlinedComboBox}" />
-                        </StackPanel>
-                        <DataGrid x:Name="NetTesterResults"
-                                  KeyDown="NetTesterResults_KeyDown"
-          AutoGenerateColumns="True"
-          AutoGeneratingColumn="NetTesterResults_AutoGeneratingColumn"
-          HeadersVisibility="Column"
-          CanUserSortColumns="True"
-          CanUserResizeColumns="True"
-          IsReadOnly="True"
-          Background="Transparent"
-          Foreground="White"
-          GridLinesVisibility="Horizontal"
-          FontSize="14"
-          materialDesign:DataGridAssist.CellPadding="8"
-          Padding="4"
-          ContextMenuOpening="NetTesterRow_ContextMenuOpening">
 
+                            <ComboBox Width="494"
+                                      ItemsSource="{Binding Adapters}"
+                                      SelectedItem="{Binding SelectedAdapter}"
+                                      DisplayMemberPath="Name"
+                                      materialDesign:HintAssist.Hint="Network Interface"
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+                        </StackPanel>
+
+                        <!-- DataGrid with ContextMenu + KeyDown MVVM trigger -->
+                        <DataGrid x:Name="NetTesterResults"
+                                  AutoGenerateColumns="True"
+                                  AutoGeneratingColumn="NetTesterResults_AutoGeneratingColumn"
+                                  HeadersVisibility="Column"
+                                  CanUserSortColumns="True"
+                                  CanUserResizeColumns="True"
+                                  IsReadOnly="True"
+                                  Background="Transparent"
+                                  Foreground="White"
+                                  GridLinesVisibility="Horizontal"
+                                  FontSize="14"
+                                  materialDesign:DataGridAssist.CellPadding="8"
+                                  Padding="4"
+                                  ItemsSource="{Binding ResultsView}"
+                                  ContextMenuOpening="NetTesterRow_ContextMenuOpening">
                             <DataGrid.Resources>
-                                <ContextMenu x:Key="HostContextMenu" Placement="MousePoint">
+                                <ContextMenu x:Key="HostContextMenu"
+                                             Placement="MousePoint">
                                     <MenuItem Header="🖥 Open in RDP"
-                      Click="OpenInRdp_Click" />
+                                              Command="{Binding DataContext.OpenInRdpCommand,
+                                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext,
+                                                          RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                     <MenuItem Header="🔐 Open in SSH Console"
-                      Click="OpenInSsh_Click"
-                      x:Name="SSHMenuItem" />
+                                              x:Name="SSHMenuItem"
+                                              Command="{Binding DataContext.OpenInSshCommand,
+                                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext,
+                                                          RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                     <MenuItem Header="🌐 Open Web UI (HTTP)"
-                      Click="OpenHttp_Click"
-                      x:Name="HttpMenuItem" />
+                                              x:Name="HttpMenuItem"
+                                              Command="{Binding DataContext.OpenHttpCommand,
+                                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext,
+                                                          RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                     <MenuItem Header="📂 Browse via UNC Path"
-                      Click="OpenUnc_Click" />
+                                              Command="{Binding DataContext.OpenUncCommand,
+                                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext,
+                                                          RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                 </ContextMenu>
                             </DataGrid.Resources>
                             <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
-                                    <Setter Property="ContextMenu" Value="{StaticResource HostContextMenu}" />
-                                    <EventSetter Event="ContextMenuOpening" Handler="NetTesterRow_ContextMenuOpening" />
+                                <Style TargetType="DataGridRow"
+                                       BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                                    <Setter Property="ContextMenu"
+                                            Value="{StaticResource HostContextMenu}"/>
+                                    <EventSetter Event="ContextMenuOpening"
+                                                 Handler="NetTesterRow_ContextMenuOpening"/>
                                 </Style>
                             </DataGrid.RowStyle>
+                            <!-- KeyDown → MVVM command -->
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="KeyDown">
+                                    <i:InvokeCommandAction Command="{Binding NetTesterResultsKeyDownCommand}"
+                                                           CommandParameter="{Binding SelectedItem, ElementName=NetTesterResults}"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
                         </DataGrid>
                     </DockPanel>
                 </TabItem>
-                <!-- SSH Console Tab -->
-                <TabItem Header="🔐 SSH Console">
-                    <Grid>
+
+                <!-- ───────────────────────────────────────────────────────────
+     SSH Console Tab (updated to match SFTP UI layout)
+     ─────────────────────────────────────────────────────────── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ConsoleLine"
+                                     Width="22"
+                                     Height="22"
+                                     Margin="0,0,6,0"/>
+                            <TextBlock Text="SSH Console"
+                       FontSize="16"
+                       FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </TabItem.Header>
+
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="300"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 1) Left Pane: Connection Card + Sessions Tree -->
+                        <StackPanel Grid.Column="0"
+                    Background="Transparent">
+                            <materialDesign:Card Margin="0,0,0,16"
+                                 Padding="12"
+                                 Background="{DynamicResource MaterialDesignPaper}">
+                                <StackPanel Margin="-12,0,-14,0">
+                                    <TextBlock Text="SSH Connection Details"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+                                    <TextBox Text="{Binding NewSshHost, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,0,8"
+                             materialDesign:HintAssist.Hint="Host/IP"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                                    <TextBox Text="{Binding NewSshUsername, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,0,8"
+                             materialDesign:HintAssist.Hint="Username"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                                    <PasswordBox x:Name="SshPasswordInput"
+                                 Margin="0,0,0,12"
+                                 materialDesign:HintAssist.Hint="Password"
+                                 Style="{StaticResource MaterialDesignFloatingHintPasswordBox}"
+                                 PasswordChanged="SshPasswordInput_PasswordChanged"/>
+                                    <Button Content="Connect"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Command="{Binding AddSshSessionCommand}"
+                            IsEnabled="{Binding CanAddSshSession}"
+                            HorizontalAlignment="Left"
+                            Padding="12,6"
+                            FontSize="14"/>
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                            <!-- 2) Sessions TreeView (with header “Active Sessions”) -->
+                            <TextBlock Text="SSH Connection Manager"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8"/>
+                            <TreeView x:Name="SshSessionTree"
+                      ItemsSource="{Binding SshSessions}"
+                      SelectedItemChanged="SshSessionTree_SelectedItemChanged"
+                      Background="Transparent"
+                      Foreground="White"
+                      FontSize="14">
+                                <TreeView.ItemTemplate>
+                                    <HierarchicalDataTemplate DataType="{x:Type vm:SshSessionViewModel}"
+                                              ItemsSource="{Binding SubSessions}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <materialDesign:PackIcon
+                                                Kind="{Binding IsConnected, Converter={StaticResource BoolToConnectionIconConverter}}"
+                                                Width="16"
+                                                Height="16"
+                                                Foreground="{Binding IsConnected, Converter={StaticResource BoolToConnectionColorConverter}}"
+                                                Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding ConnectionKey}"
+                                                       FontSize="14"
+                                                       Padding="4,2"/>
+                                        </StackPanel>
+                                    </HierarchicalDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                        </StackPanel>
+
+                        <!-- 3) Right Pane: Dynamic TabControl for each SSH session -->
                         <TabControl x:Name="SshSessionTabControl"
+                    Grid.Column="1"
+                    ItemsSource="{Binding SshSessions}"
+                    SelectedItem="{Binding SelectedSshSession, Mode=TwoWay}"
                     Background="Transparent"
                     Foreground="White"
                     FontSize="13">
-                            <!-- Static, unclosable Home tab -->
-                            <TabItem>
-                                <TabItem.Header>
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="ConsoleLine" Width="20" Height="20" Margin="0,0,4,0"/>
-                                        <TextBlock Text="SSH Console Manager"/>
-                                    </StackPanel>
-                                </TabItem.Header>
 
-                                <Grid Margin="10">
-                                    <StackPanel Orientation="Vertical">
-                                        <!-- SSH Connection Form -->
-                                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Top"
-                                    Margin="0,0,0,12">
-                                            <TextBox x:Name="SshHostInput"
-                                     materialDesign:HintAssist.Hint="Host/IP"
-                                     Margin="0,0,8,0"
-                                     Width="160"
-                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                            <!-- 3.1) ITEM HEADER: show status icon, TabTitle, and a close‐“X” button -->
+                            <TabControl.ItemTemplate>
+                                <StaticResource ResourceKey="ClosableTabHeaderTemplate"/>
+                            </TabControl.ItemTemplate>
 
-                                            <TextBox x:Name="SshUsernameInput"
-                                     materialDesign:HintAssist.Hint="Username"
-                                     Margin="0,0,8,0"
-                                     Width="140"
-                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
-
-                                            <PasswordBox x:Name="SshPasswordInput"
-                                         materialDesign:HintAssist.Hint="Password"
-                                         Margin="0,0,8,0"
-                                         Width="140"
-                                         Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
-
-                                            <Button Content="Connect"
-                                    Width="100"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Click="ConnectSshSession_Click" />
-                                        </StackPanel>
-
-                                        <!-- Session List -->
-                                        <TreeView x:Name="SshSessionTree"
-                                  Background="Transparent"
-                                  Foreground="White"
-                                  FontSize="13"
-                                  MouseLeftButtonUp="SshSessionTree_MouseLeftButtonUp"
-                                  Margin="0,0,0,0" />
-                                    </StackPanel>
-                                </Grid>
-                            </TabItem>
+                            <!-- 3.2) ITEM CONTENT: whatever SshSessionViewModel’s DataTemplate defines -->
+                            <TabControl.ContentTemplate>
+                                <DataTemplate DataType="{x:Type vm:SshSessionViewModel}">
+                                    <Grid Margin="8">
+                                        <TextBox x:Name="SshTerminalBox"
+                                        PreviewKeyDown="SshTerminalBox_PreviewKeyDown"
+                                        PreviewTextInput="SshTerminalBox_PreviewTextInput"     
+                                         Text="{Binding TerminalContent, Mode=OneWay}"
+                                         FontFamily="Consolas"
+                                         FontSize="14"
+                                         IsReadOnly="True"
+                                         AcceptsReturn="True"
+                                         VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Auto"
+                                         Background="Black"
+                                         Foreground="LightGreen">
+                                            <i:Interaction.Behaviors>
+                                                <behaviors:TextBoxAutoScrollBehavior />
+                                            </i:Interaction.Behaviors>
+                                        </TextBox>
+                                    </Grid>
+                                </DataTemplate>
+                            </TabControl.ContentTemplate>
                         </TabControl>
                     </Grid>
                 </TabItem>
-                <!-- SFTP Client Tab -->
-                <TabItem Header="📁 SFTP Client">
-                    <Grid>
-                        <TabControl x:Name="SftpSessionTabControl"
-                    Background="Transparent"
-                    Foreground="White"
-                    FontSize="13">
-                            <!-- Static, unclosable Home tab -->
-                            <TabItem>
-                                <TabItem.Header>
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="FileUploadOutline" Width="20" Height="20" Margin="0,0,4,0"/>
-                                        <TextBlock Text="SFTP Connection Manager"/>
-                                    </StackPanel>
-                                </TabItem.Header>
 
-                                <Grid Margin="10">
-                                    <StackPanel Orientation="Vertical">
-                                        <!-- SFTP Connection Form -->
-                                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Top"
-                                    Margin="0,0,0,12">
-                                            <TextBox x:Name="SftpHostInput"
-                                     materialDesign:HintAssist.Hint="Host/IP"
-                                     Margin="0,0,8,0"
-                                     Width="160"
-                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
 
-                                            <TextBox x:Name="SftpUsernameInput"
-                                     materialDesign:HintAssist.Hint="Username"
-                                     Margin="0,0,8,0"
-                                     Width="140"
-                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                <!-- ───────────────────────────────────────────────────────────
+                     SFTP Client Tab (production-ready updates)
+                     ─────────────────────────────────────────────────────────── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FileUploadOutline"
+                                                     Width="22"
+                                                     Height="22"
+                                                     Margin="0,0,6,0"/>
+                            <TextBlock Text="SFTP Client"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </TabItem.Header>
 
-                                            <PasswordBox x:Name="SftpPasswordInput"
-                                         materialDesign:HintAssist.Hint="Password"
-                                         Margin="0,0,8,0"
-                                         Width="140"
-                                         Style="{StaticResource MaterialDesignFloatingHintPasswordBox}" />
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="300"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                                            <Button Content="Connect"
-                                    Width="100"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Click="ConnectSftpSession_Click" />
+                        <!-- 1) Left Pane: Connection Card + Sessions Tree -->
+                        <StackPanel Grid.Column="0"
+                                    Background="Transparent">
+                            <materialDesign:Card Margin="0,0,0,16"
+                                                 Padding="12"
+                                                 Background="{DynamicResource MaterialDesignPaper}">
+                                <StackPanel Margin="-12,0,-14,0">
+                                    <TextBlock Text="SFTP Connection Details"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,8"/>
+                                    <TextBox Text="{Binding SftpHost, UpdateSourceTrigger=PropertyChanged}"
+                                             Margin="0,0,0,8"
+                                             materialDesign:HintAssist.Hint="Host/IP"
+                                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                                    <TextBox Text="{Binding SftpUsername, UpdateSourceTrigger=PropertyChanged}"
+                                             Margin="0,0,0,8"
+                                             materialDesign:HintAssist.Hint="Username"
+                                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                                    <PasswordBox x:Name="SftpPasswordInput"
+                                                 Margin="0,0,0,12"
+                                                 materialDesign:HintAssist.Hint="Password"
+                                                 Style="{StaticResource MaterialDesignFloatingHintPasswordBox}"
+                                                 PasswordChanged="SftpPasswordInput_PasswordChanged"/>
+
+                                    <Button Content="Connect"
+                                            Style="{StaticResource MaterialDesignRaisedButton}"
+                                            Command="{Binding AddSftpSessionCommand}"
+                                            IsEnabled="{Binding CanAddSftpSession}"
+                                            HorizontalAlignment="Left"
+                                            Padding="12,6"
+                                            FontSize="14"/>
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                            <!-- 2) Sessions TreeView (with header “Active Sessions”) -->
+                            <TextBlock Text="SFTP Connection Manager"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <TreeView x:Name="SftpSessionTree"
+                                      ItemsSource="{Binding SftpSessions}"
+                                      SelectedItemChanged="SftpSessionTree_SelectedItemChanged"
+                                      Background="Transparent"
+                                      Foreground="White"
+                                      FontSize="14">
+                                <TreeView.ItemTemplate>
+                                    <HierarchicalDataTemplate DataType="{x:Type vm:SftpSessionViewModel}"
+                                                              ItemsSource="{Binding SubSessions}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <materialDesign:PackIcon
+                                                Kind="{Binding IsConnected, Converter={StaticResource BoolToConnectionIconConverter}}"
+                                                Width="16"
+                                                Height="16"
+                                                Foreground="{Binding IsConnected, Converter={StaticResource BoolToConnectionColorConverter}}"
+                                                Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding ConnectionKey}"
+                                                       FontSize="14"
+                                                       Padding="4,2"/>
                                         </StackPanel>
+                                    </HierarchicalDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                        </StackPanel>
 
-                                        <!-- Session List -->
-                                        <TreeView x:Name="SftpSessionTree"
-                                  Background="Transparent"
-                                  Foreground="White"
-                                  FontSize="13"
-                                  MouseLeftButtonUp="SftpSessionTree_MouseLeftButtonUp"
-                                  Margin="0,0,0,0" />
-                                    </StackPanel>
-                                </Grid>
-                            </TabItem>
+                        <!-- 3) Right Pane: Dynamic TabControl for each SFTP session -->
+                        <TabControl
+    x:Name="SftpSessionTabControl"
+    Grid.Column="1"
+    ItemsSource="{Binding SftpSessions}"
+    SelectedItem="{Binding SelectedSftpSession, Mode=TwoWay}"
+    Background="Transparent"
+    Foreground="White"
+    FontSize="13">
+
+                            <!-- 1) ITEM HEADER: show status icon, TabTitle, and a close‐“X” button -->
+                            <TabControl.ItemTemplate>
+                                <StaticResource ResourceKey="ClosableTabHeaderTemplate"/>
+                            </TabControl.ItemTemplate>
+
+                            <!-- 2) ITEM CONTENT: whatever SftpSessionViewModel’s DataTemplate defines -->
+                            <TabControl.ContentTemplate>
+                                <DataTemplate DataType="{x:Type vm:SftpSessionViewModel}">
+                                    <ContentPresenter Content="{Binding}" />
+                                </DataTemplate>
+                            </TabControl.ContentTemplate>
                         </TabControl>
+
                     </Grid>
                 </TabItem>
             </TabControl>
         </DockPanel>
     </Border>
-    <Window.Resources>
-        <DataTemplate x:Key="ClosableTabHeaderTemplate">
-            <DockPanel LastChildFill="False" VerticalAlignment="Center">
-                <TextBlock Text="{Binding}" 
-                   VerticalAlignment="Center" 
-                   Margin="0,0,6,0"
-                   Foreground="White" 
-                   FontWeight="SemiBold" />
-
-                <Button Width="20" Height="20"
-                Background="Transparent"
-                BorderThickness="0"
-                Padding="0"
-                ToolTip="Close"
-                Click="CloseTab_Click"
-                VerticalAlignment="Center">
-                    <materialDesign:PackIcon Kind="Close" Width="16" Height="16" Foreground="White"/>
-                </Button>
-            </DockPanel>
-        </DataTemplate>
-    </Window.Resources>
 </Window>

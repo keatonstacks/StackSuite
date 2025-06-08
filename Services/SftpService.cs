@@ -3,6 +3,7 @@ using Renci.SshNet.Sftp;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -64,6 +65,75 @@ namespace StackSuite.Services
             await Task.Run(() =>
             {
                 _client.UploadFile(file, remotePath, true, bytes => progress?.Report(bytes));
+            }, cancellationToken);
+        }
+
+        public async Task DeleteFileAsync(string remotePath, CancellationToken cancellationToken = default)
+        {
+            if (_client == null || !_client.IsConnected)
+                throw new InvalidOperationException("SFTP client is not connected.");
+
+            await Task.Run(() =>
+            {
+                _client.DeleteFile(remotePath);
+            }, cancellationToken);
+        }
+
+        public async Task DeleteDirectoryAsync(string remotePath, CancellationToken cancellationToken = default)
+        {
+            if (_client == null || !_client.IsConnected)
+                throw new InvalidOperationException("SFTP client is not connected.");
+
+            await Task.Run(() =>
+            {
+                // Recursively delete all files and subdirectories
+                var files = _client.ListDirectory(remotePath);
+                foreach (var file in files)
+                {
+                    if (file.Name == "." || file.Name == "..")
+                        continue;
+
+                    if (file.IsDirectory)
+                    {
+                        DeleteDirectoryRecursive(file.FullName, cancellationToken);
+                    }
+                    else
+                    {
+                        _client.DeleteFile(file.FullName);
+                    }
+                }
+                _client.DeleteDirectory(remotePath);
+            }, cancellationToken);
+        }
+
+        private void DeleteDirectoryRecursive(string remotePath, CancellationToken cancellationToken)
+        {
+            var files = _client!.ListDirectory(remotePath);
+            foreach (var file in files)
+            {
+                if (file.Name == "." || file.Name == "..")
+                    continue;
+
+                if (file.IsDirectory)
+                {
+                    DeleteDirectoryRecursive(file.FullName, cancellationToken);
+                }
+                else
+                {
+                    _client.DeleteFile(file.FullName);
+                }
+            }
+            _client.DeleteDirectory(remotePath);
+        }
+
+        public async Task CreateDirectoryAsync(string remotePath, CancellationToken cancellationToken = default)
+        {
+            if (_client == null || !_client.IsConnected)
+                throw new InvalidOperationException("SFTP client is not connected.");
+
+            await Task.Run(() =>
+            {
+                _client.CreateDirectory(remotePath);
             }, cancellationToken);
         }
 
