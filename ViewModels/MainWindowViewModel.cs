@@ -1,18 +1,12 @@
 ﻿using Microsoft.Win32;
 using Renci.SshNet.Sftp;
 using StackSuite.Services;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.NetworkInformation;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -905,7 +899,7 @@ namespace StackSuite.ViewModels
             },
             param => sftpVm.Service?.IsConnected == true && param is SftpFileViewModel);
 
-            // Download
+            // ───── Download (with progress & cancellation) ─────
             sftpVm.DownloadCommand = new RelayCommand<object?>(async param =>
             {
                 if (param is not IList list) return;
@@ -914,80 +908,138 @@ namespace StackSuite.ViewModels
                                 .ToList();
                 if (!items.Any())
                 {
-                    MessageBox.Show("Please select one or more files to download.", "No Files Selected", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Please select one or more files to download.",
+                                    "No Files Selected",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Information);
                     return;
                 }
 
-                if (items.Count == 1)
+                // 1) Prepare cancellation & progress reporting
+                sftpVm._transferCts = new CancellationTokenSource();
+                sftpVm.IsTransferInProgress = true;
+                var progress = new Progress<ProgressReport>(report =>
                 {
-                    var file = items.First().SftpFile;
-                    var dlg = new SaveFileDialog { FileName = file.Name };
-                    if (dlg.ShowDialog() == true)
+                    double pct = report.TotalBytes == 0
+                        ? 0
+                        : report.BytesTransferred / (double)report.TotalBytes * 100;
+                    sftpVm.TransferProgressPercent = pct;
+
+                    // ← Now uses human-readable MB/KB via your FormatFileSize()
+                    sftpVm.TransferStatusText =
+                        $"{FormatFileSize(report.BytesTransferred)} / {FormatFileSize(report.TotalBytes)} ({pct:0.##}% completed)";
+                });
+
+                try
+                {
+                    if (items.Count == 1)
                     {
-                        try
-                        {
-                            sftpVm.StatusText = $"Downloading {file.Name}...";
-                            await sftpVm.Service!.DownloadFileAsync(file.FullName, dlg.FileName);
-                            sftpVm.StatusText = $"Downloaded {file.Name}";
-                        }
-                        catch (Exception ex)
-                        {
-                            sftpVm.StatusText = $"Download failed: {ex.Message}";
-                            MessageBox.Show($"Download failed:\n{ex.Message}", "Download Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
+                        var file = items.First().SftpFile;
+                        var dlg = new SaveFileDialog { FileName = file.Name };
+                        if (dlg.ShowDialog() != true) return;
+
+                        sftpVm.StatusText = $"Downloading {file.Name}…";
+                        await sftpVm.Service!.DownloadFileAsync(
+                            file.FullName,
+                            dlg.FileName,
+                            progress,
+                            sftpVm._transferCts.Token
+                        );
+                        sftpVm.StatusText = $"Downloaded {file.Name}";
+                    }
+                    else
+                    {
+                        var folderDlg = new System.Windows.Forms.FolderBrowserDialog();
+                        if (folderDlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+                        sftpVm.StatusText = $"Downloading {items.Count} files…";
+                        var tasks = items.Select(vm =>
+                            sftpVm.Service!.DownloadFileAsync(
+                                vm.SftpFile.FullName,
+                                Path.Combine(folderDlg.SelectedPath, vm.SftpFile.Name),
+                                progress,
+                                sftpVm._transferCts.Token
+                            ));
+                        await Task.WhenAll(tasks);
+                        sftpVm.StatusText = $"Downloaded {items.Count} files";
                     }
                 }
-                else
+                catch (OperationCanceledException)
                 {
-                    var folderDlg = new System.Windows.Forms.FolderBrowserDialog();
-                    if (folderDlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                    {
-                        try
-                        {
-                            sftpVm.StatusText = $"Downloading {items.Count} files...";
-                            var tasks = items.Select(vm =>
-                                sftpVm.Service!.DownloadFileAsync(
-                                    vm.SftpFile.FullName,
-                                    Path.Combine(folderDlg.SelectedPath, vm.SftpFile.Name)
-                                ));
-                            await Task.WhenAll(tasks);
-                            sftpVm.StatusText = $"Downloaded {items.Count} files";
-                        }
-                        catch (Exception ex)
-                        {
-                            sftpVm.StatusText = $"Some downloads failed: {ex.Message}";
-                        }
-                    }
+                    sftpVm.StatusText = "Download canceled.";
+                }
+                catch (Exception ex)
+                {
+                    sftpVm.StatusText = $"Download failed: {ex.Message}";
+                }
+                finally
+                {
+                    sftpVm.IsTransferInProgress = false;
+                    sftpVm._transferCts?.Dispose();
+                    sftpVm._transferCts = null;
                 }
             },
             param => sftpVm.Service?.IsConnected == true);
 
+
             // Upload
+            // ───── Upload (with progress & cancellation) ─────
             sftpVm.UploadCommand = new RelayCommand<object?>(async _ =>
             {
                 var dlg = new OpenFileDialog { Multiselect = true };
-                if (dlg.ShowDialog() == true)
+                if (dlg.ShowDialog() != true) return;
+
+                // 1) Prepare cancellation & progress reporting
+                sftpVm._transferCts = new CancellationTokenSource();
+                sftpVm.IsTransferInProgress = true;
+                var progress = new Progress<ProgressReport>(report =>
                 {
-                    try
+                    double pct = report.TotalBytes == 0
+                        ? 0
+                        : report.BytesTransferred / (double)report.TotalBytes * 100;
+                    sftpVm.TransferProgressPercent = pct;
+                    sftpVm.TransferStatusText =
+                        $"{FormatFileSize(report.BytesTransferred)} / {FormatFileSize(report.TotalBytes)} ({pct:0.##}% completed)";
+                });
+
+                try
+                {
+                    sftpVm.StatusText = $"Uploading {dlg.FileNames.Length} files…";
+                    var tasks = dlg.FileNames.Select(localPath =>
                     {
-                        sftpVm.StatusText = $"Uploading {dlg.FileNames.Length} files...";
-                        var tasks = dlg.FileNames.Select(localPath =>
-                        {
-                            var fileName = Path.GetFileName(localPath);
-                            var remotePath = $"{sftpVm.CurrentPath.TrimEnd('/')}/{fileName}";
-                            return sftpVm.Service!.UploadFileAsync(localPath, remotePath);
-                        });
-                        await Task.WhenAll(tasks);
-                        await LoadSftpDirectoryAsync(sftpVm, sftpVm.CurrentPath);
-                        sftpVm.StatusText = $"Uploaded {dlg.FileNames.Length} files";
-                    }
-                    catch (Exception ex)
-                    {
-                        sftpVm.StatusText = $"Upload failed: {ex.Message}";
-                        MessageBox.Show($"Upload failed:\n{ex.Message}", "Upload Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                        var fileName = Path.GetFileName(localPath);
+                        var remotePath = $"{sftpVm.CurrentPath.TrimEnd('/')}/{fileName}";
+                        return sftpVm.Service!.UploadFileAsync(
+                            localPath,
+                            remotePath,
+                            progress,
+                            sftpVm._transferCts.Token
+                        );
+                    });
+                    await Task.WhenAll(tasks);
+                    await LoadSftpDirectoryAsync(sftpVm, sftpVm.CurrentPath);
+                    sftpVm.StatusText = $"Uploaded {dlg.FileNames.Length} files";
                 }
-            }, _ => sftpVm.Service?.IsConnected == true);
+                catch (OperationCanceledException)
+                {
+                    sftpVm.StatusText = "Upload canceled.";
+                }
+                catch (Exception ex)
+                {
+                    sftpVm.StatusText = $"Upload failed: {ex.Message}";
+                    MessageBox.Show($"Upload failed:\n{ex.Message}",
+                                    "Upload Error",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Error);
+                }
+                finally
+                {
+                    sftpVm.IsTransferInProgress = false;
+                    sftpVm._transferCts?.Dispose();
+                    sftpVm._transferCts = null;
+                }
+            },
+            _ => sftpVm.Service?.IsConnected == true);
 
             // Delete
             sftpVm.DeleteCommand = new RelayCommand<object?>(async param =>
@@ -1070,19 +1122,37 @@ namespace StackSuite.ViewModels
             };
         }
 
-        private string FormatFileSize(long bytes)
+        /// <summary>
+        /// Convert an unsigned byte count into a human-readable string (B, KB, MB, GB, TB).
+        /// </summary>
+        private string FormatFileSize(ulong bytes)
         {
-            if (bytes == 0) return "0 B";
+            if (bytes == 0UL)
+                return "0 B";
+
             string[] sizes = { "B", "KB", "MB", "GB", "TB" };
             int order = 0;
             double size = bytes;
+
             while (size >= 1024 && order < sizes.Length - 1)
             {
                 order++;
                 size /= 1024;
             }
+
             return $"{size:0.##} {sizes[order]}";
         }
+
+        /// <summary>
+        /// Convert a signed byte count into a human-readable string by forwarding to the ulong overload.
+        /// Negative values are treated as zero.
+        /// </summary>
+        private string FormatFileSize(long bytes)
+        {
+            // guard against negative long values
+            return FormatFileSize((ulong)Math.Max(bytes, 0));
+        }
+
 
         // ─────────────────────────────────────────────────────────────────────────────
         // J) INotifyPropertyChanged IMPLEMENTATION

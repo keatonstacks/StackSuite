@@ -1,18 +1,11 @@
-﻿using Microsoft.Win32;
-using System;
-using System.Collections.Specialized;          // ← for NotifyCollectionChangedEventArgs
+﻿using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using StackSuite.Services;
 using StackSuite.ViewModels;
 
 namespace StackSuite
@@ -23,19 +16,14 @@ namespace StackSuite
         {
             InitializeComponent();
 
-            // 1) Set DataContext
             DataContext = new MainWindowViewModel();
 
-            // 2) Subscribe to SftpSessions.CollectionChanged so we can clear the PasswordBox
             if (DataContext is MainWindowViewModel vm)
             {
                 vm.SftpSessions.CollectionChanged += SftpSessions_CollectionChanged;
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // A) When a new SFTP session is added, clear the visible PasswordBox
-        // ─────────────────────────────────────────────────────────────────────────────
         private void SshSessions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.Action == NotifyCollectionChangedAction.Add)
@@ -46,17 +34,12 @@ namespace StackSuite
 
         private void SftpSessions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            // Only act when items are added
             if (e.Action == NotifyCollectionChangedAction.Add)
             {
-                // Clear the PasswordBox so that 'Connect' can be clicked again
                 SftpPasswordInput.Password = "";
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // B) TreeView selection → switch to the correct tab
-        // ─────────────────────────────────────────────────────────────────────────────
         private void SftpSessionTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (DataContext is MainWindowViewModel vm && e.NewValue is SftpSessionViewModel chosen)
@@ -65,9 +48,6 @@ namespace StackSuite
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 1) Net Tester DataGrid: Auto‐generate column headers via DisplayNameAttribute
-        // ─────────────────────────────────────────────────────────────────────────────
         private void NetTesterResults_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
         {
             var prop = typeof(DeviceInfo).GetProperty(e.PropertyName);
@@ -79,9 +59,6 @@ namespace StackSuite
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 2) Net Tester DataGrid: Enable/disable context‐menu items based on DeviceInfo
-        // ─────────────────────────────────────────────────────────────────────────────
         private void NetTesterRow_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
             if (sender is not DataGridRow row || row.Item is not DeviceInfo device)
@@ -125,9 +102,6 @@ namespace StackSuite
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 3) Window‐Chrome / Title Bar Handlers (unchanged)
-        // ─────────────────────────────────────────────────────────────────────────────
         private void Minimize_Click(object sender, RoutedEventArgs e) =>
             WindowState = WindowState.Minimized;
 
@@ -145,9 +119,6 @@ namespace StackSuite
                 DragMove();
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 4) "Home" TreeView Navigation Handlers (unchanged)
-        // ─────────────────────────────────────────────────────────────────────────────
         private void TreeViewItem_ReadMe_Selected(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
@@ -168,13 +139,11 @@ namespace StackSuite
 
         private void NetworkTestingTreeViewItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // Switch to “Network Tester” tab (index 1)
             MainTabControl.SelectedIndex = 1;
         }
 
         private void SshTreeViewItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // Find the first TabItem whose Header contains “SSH”
             var sshTab = MainTabControl.Items
                 .OfType<TabItem>()
                 .FirstOrDefault(t => t.Header?.ToString().Contains("SSH") == true);
@@ -185,7 +154,6 @@ namespace StackSuite
 
         private void SftpTreeViewItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // Find the first TabItem whose Header contains “SFTP”
             var sftpTab = MainTabControl.Items
                 .OfType<TabItem>()
                 .FirstOrDefault(t => t.Header?.ToString().Contains("SFTP") == true);
@@ -194,9 +162,6 @@ namespace StackSuite
                 MainTabControl.SelectedItem = sftpTab;
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 5) SFTP / SSH PasswordBox: keep ViewModel.SftpPassword in sync
-        // ─────────────────────────────────────────────────────────────────────────────
         private void SftpPasswordInput_PasswordChanged(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel vm && sender is PasswordBox pb)
@@ -204,6 +169,7 @@ namespace StackSuite
                 vm.SftpPassword = pb.Password;
             }
         }
+
         private void SshPasswordInput_PasswordChanged(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel vm && sender is PasswordBox pb)
@@ -211,9 +177,7 @@ namespace StackSuite
                 vm.NewSshPassword = pb.Password;
             }
         }
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 6) Helper Method: Find a parent of a given type in the Visual Tree
-        // ─────────────────────────────────────────────────────────────────────────────
+
         public static T? FindParent<T>(DependencyObject child) where T : DependencyObject
         {
             var parent = VisualTreeHelper.GetParent(child);
@@ -224,60 +188,60 @@ namespace StackSuite
             }
             return null;
         }
+
+        // --- FIXED: Pattern matching ensures session is non-null for the switch ---
         private void SshTerminalBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            var vm = (DataContext as MainWindowViewModel)?.SelectedSshSession;
-            if (vm == null) return;
+            if ((DataContext as MainWindowViewModel)?.SelectedSshSession is not SshSessionViewModel session)
+                return;
 
             switch (e.Key)
             {
                 case Key.Enter:
-                    vm.SendInput("\r");
+                    session.SendInput("\r");
                     e.Handled = true;
                     break;
 
                 case Key.Back:
-                    // send a true backspace
-                    vm.SendInput("\b");
+                    session.SendInput("\b");
                     e.Handled = true;
                     break;
 
                 case Key.Tab:
-                    vm.SendInput("\t");
+                    session.SendInput("\t");
                     e.Handled = true;
                     break;
 
                 case Key.Up:
-                    vm.SendInput("\x1B[A");
+                    session.SendInput("\x1B[A");
                     e.Handled = true;
                     break;
 
                 case Key.Down:
-                    vm.SendInput("\x1B[B");
+                    session.SendInput("\x1B[B");
                     e.Handled = true;
                     break;
 
                 case Key.Left:
-                    vm.SendInput("\x1B[D");
+                    session.SendInput("\x1B[D");
                     e.Handled = true;
                     break;
 
                 case Key.Right:
-                    vm.SendInput("\x1B[C");
+                    session.SendInput("\x1B[C");
                     e.Handled = true;
                     break;
 
                 case Key.C:
                     if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                     {
-                        vm.SendInput("\x03"); // Ctrl+C
+                        session.SendInput("\x03");
                         e.Handled = true;
                     }
                     break;
-
-                    // Let SPACE fall through into PreviewTextInput
             }
         }
+
         private void SshSessionTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (DataContext is MainWindowViewModel vm && e.NewValue is SshSessionViewModel sshVm)

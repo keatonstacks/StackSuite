@@ -1,31 +1,11 @@
-﻿// SftpSessionViewModel.cs (revamped)
-// ==================================
-// **Changelog:**
-// 1. Removed shadowed ConnectionKey, TabTitle, IsConnected members.
-// 2. Utilizes inherited properties from SessionBaseViewModel.
-// 3. Initial commands are disabled until Service.IsConnected is true.
-
-using Renci.SshNet.Sftp;
-using StackSuite.Services;
-using System;
+﻿using StackSuite.Services;
 using System.Collections.ObjectModel;
-using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace StackSuite.ViewModels
 {
-    /// <summary>
-    /// Represents an active SFTP session. Inherits close logic from SessionBaseViewModel.
-    /// </summary>
     public class SftpSessionViewModel : SessionBaseViewModel
     {
-        // =================================================================================
-        // Inherited Members (no longer shadowed):
-        //   string ConnectionKey { get; set; }
-        //   string TabTitle       { get; set; }
-        //   bool   IsConnected    { get; set; }
-        // =================================================================================
-
         private string _currentPath = "/";
         public string CurrentPath
         {
@@ -70,7 +50,51 @@ namespace StackSuite.ViewModels
             }
         }
 
-        // Commands will be wired up after connection succeeds
+        private bool _isTransferInProgress;
+        public bool IsTransferInProgress
+        {
+            get => _isTransferInProgress;
+            set
+            {
+                if (_isTransferInProgress != value)
+                {
+                    _isTransferInProgress = value;
+                    OnPropertyChanged(nameof(IsTransferInProgress));
+                    (CancelTransferCommand as RelayCommand<object?>)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        private double _transferProgressPercent;
+        public double TransferProgressPercent
+        {
+            get => _transferProgressPercent;
+            set
+            {
+                if (Math.Abs(_transferProgressPercent - value) > 0.1)
+                {
+                    _transferProgressPercent = value;
+                    OnPropertyChanged(nameof(TransferProgressPercent));
+                }
+            }
+        }
+
+        private string _transferStatusText = "";
+        public string TransferStatusText
+        {
+            get => _transferStatusText;
+            set
+            {
+                if (_transferStatusText != value)
+                {
+                    _transferStatusText = value;
+                    OnPropertyChanged(nameof(TransferStatusText));
+                }
+            }
+        }
+
+        internal CancellationTokenSource? _transferCts;
+        public ICommand CancelTransferCommand { get; set; }
         public ICommand UpDirectoryCommand { get; set; }
         public ICommand RefreshDirectoryCommand { get; set; }
         public ICommand NavigateDirectoryCommand { get; set; }
@@ -82,10 +106,8 @@ namespace StackSuite.ViewModels
         public SftpSessionViewModel(Action<SessionBaseViewModel> removeCallback)
             : base(removeCallback)
         {
-            // Start disconnected: close button disabled until IsConnected = true
             IsConnected = false;
 
-            // Initialize commands disabled by default
             UpDirectoryCommand = new RelayCommand<object?>(async _ => { }, _ => false);
             RefreshDirectoryCommand = new RelayCommand<object?>(async _ => { }, _ => false);
             NavigateDirectoryCommand = new RelayCommand<object?>(async _ => { }, _ => false);
@@ -93,15 +115,22 @@ namespace StackSuite.ViewModels
             UploadCommand = new RelayCommand<object?>(async _ => { }, _ => false);
             DeleteCommand = new RelayCommand<object?>(async _ => { }, _ => false);
             CreateFolderCommand = new RelayCommand<object?>(async _ => { }, _ => false);
+
+            CancelTransferCommand = new RelayCommand<object?>(
+                _ => _transferCts?.Cancel(),
+                _ => IsTransferInProgress
+            );
+
         }
 
         public override Task DisconnectAsync()
         {
-            // Mark disconnected and call Dispose on service
             IsConnected = false;
             Service?.Disconnect();
             Service = null;
             return Task.CompletedTask;
         }
+
     }
+
 }

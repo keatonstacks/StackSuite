@@ -31,6 +31,7 @@
          Window Resources: DataTemplates for SSH & SFTP sessions
          ───────────────────────────────────────────────────────────── -->
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <local:BoolToConnectionIconConverter x:Key="BoolToConnectionIconConverter"/>
         <local:BoolToConnectionColorConverter x:Key="BoolToConnectionColorConverter"/>
         <!-- 1) SSH Session Tab Template -->
@@ -242,6 +243,51 @@
                        FontSize="14"/>
                         </StackPanel>
                     </Button>
+
+                    <Grid
+    Margin="16,0,0,0"
+    Visibility="{Binding IsTransferInProgress, Converter={StaticResource BoolToVisibilityConverter}}"
+    VerticalAlignment="Center"
+    HorizontalAlignment="Stretch">
+
+                        <Grid.ColumnDefinitions>
+                            <!-- 1) ProgressBar fixed width -->
+                            <ColumnDefinition Width="130"/>
+                            <!-- 2) Status text takes all remaining space -->
+                            <ColumnDefinition Width="200"/>
+                            <!-- 3) Cancel button auto-sizes -->
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 1) Progress bar -->
+                        <ProgressBar
+    Grid.Column="0"
+    Height="16"
+    Minimum="0"
+    Maximum="100"
+    Value="{Binding TransferProgressPercent}" />
+
+                        <!-- 2) Status text -->
+                        <TextBlock
+    Grid.Column="1"
+    Text="{Binding TransferStatusText}"
+    FontSize="12"
+    Margin="8,0,0,0"
+    HorizontalAlignment="Left"                        
+    VerticalAlignment="Center"
+    TextTrimming="CharacterEllipsis"
+    ToolTip="{Binding TransferStatusText}" />
+
+                        <!-- 3) Cancel button -->
+                        <Button
+    Grid.Column="2"
+    Content="Cancel"
+    Command="{Binding CancelTransferCommand}"
+    Margin="8,0,0,0"
+    Style="{StaticResource MaterialDesignOutlinedButton}"
+    VerticalAlignment="Center" />
+
+                    </Grid>
                 </StackPanel>
 
                 <!-- 2.5) Status Text -->
@@ -880,21 +926,23 @@
                                             <TextBlock Text="{Binding ConnectionKey}"
                                                        FontSize="14"
                                                        Padding="4,2"/>
+                                            
                                         </StackPanel>
                                     </HierarchicalDataTemplate>
                                 </TreeView.ItemTemplate>
                             </TreeView>
+                            
                         </StackPanel>
 
                         <!-- 3) Right Pane: Dynamic TabControl for each SFTP session -->
                         <TabControl
-    x:Name="SftpSessionTabControl"
-    Grid.Column="1"
-    ItemsSource="{Binding SftpSessions}"
-    SelectedItem="{Binding SelectedSftpSession, Mode=TwoWay}"
-    Background="Transparent"
-    Foreground="White"
-    FontSize="13">
+                        x:Name="SftpSessionTabControl"
+                        Grid.Column="1"
+                        ItemsSource="{Binding SftpSessions}"
+                        SelectedItem="{Binding SelectedSftpSession, Mode=TwoWay}"
+                        Background="Transparent"
+                        Foreground="White"
+                        FontSize="13">
 
                             <!-- 1) ITEM HEADER: show status icon, TabTitle, and a close‐“X” button -->
                             <TabControl.ItemTemplate>
@@ -908,7 +956,6 @@
                                 </DataTemplate>
                             </TabControl.ContentTemplate>
                         </TabControl>
-
                     </Grid>
                 </TabItem>
             </TabControl>

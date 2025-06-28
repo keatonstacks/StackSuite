@@ -6,20 +6,12 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-
-                <!-- 1) Your existing MD3 “BundledTheme” -->
                 <materialDesign:BundledTheme 
                     BaseTheme="Dark" 
                     PrimaryColor="Blue" 
                     SecondaryColor="Lime"/>
-
-                <!-- 2) MD3 defaults (already present) -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml"/>
-
-
             </ResourceDictionary.MergedDictionaries>
-
-            <!-- Your custom Window style remains unchanged -->
             <Style x:Key="BorderlessMaterialWindow"
                    TargetType="{x:Type Window}"
                    BasedOn="{StaticResource MaterialDesignWindow}">

@@ -1,8 +1,4 @@
-﻿// SshSessionViewModel.cs (revamped with input readiness check)
-using System;
-using System.Collections.ObjectModel;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using StackSuite.Services;
 
@@ -10,17 +6,7 @@ namespace StackSuite.ViewModels
 {
     public class SshSessionViewModel : SessionBaseViewModel
     {
-        // =================================================================================
-        // Inherited Members (no longer shadowed):
-        //   string ConnectionKey { get; set; }
-        //   string TabTitle       { get; set; }
-        //   bool   IsConnected    { get; set; }
-        // =================================================================================
-
         private bool _shellReady;
-        /// <summary>
-        /// Indicates when the shell stream has been created and is writable.
-        /// </summary>
         public bool ShellReady
         {
             get => _shellReady;
@@ -60,10 +46,6 @@ namespace StackSuite.ViewModels
             IsConnected = true;
             ShellReady = false;
         }
-
-        /// <summary>
-        /// Sends user input to the shell only if ready.
-        /// </summary>
         public void SendInput(string input)
         {
             if (!ShellReady || Service == null || !Service.IsConnected)
@@ -98,11 +80,9 @@ namespace StackSuite.ViewModels
             svc.Connect(host, 22, username, password);
             Service = svc;
 
-            // Create the shell stream and mark ready
             Service.CreateShellStream();
             ShellReady = true;
 
-            // Start reading output
             _shellReadCts = new CancellationTokenSource();
             _ = Task.Run(() => ReadShellLoop(_shellReadCts.Token));
             await Task.CompletedTask;
@@ -126,7 +106,7 @@ namespace StackSuite.ViewModels
                 }
                 catch
                 {
-                    // suppressed
+
                 }
             }
         }
